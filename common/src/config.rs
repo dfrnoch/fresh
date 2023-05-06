@@ -20,7 +20,6 @@ const LOG_LEVEL: LevelFilter = LevelFilter::Warn; // server log level
 const BLACKOUT_TO_PING: u64 = 10000; /* msec since data received from a client that server will send a ping */
 const BLACKOUT_TO_KICK: u64 = 20000; /* to confirm connection or log the client off for unreachability */
 const CLIENT_TICK: u64 = 100; // client time through main loop
-const BLOCK_TIMEOUT: u64 = 5000; // unused?
 const READ_SIZE: usize = 1024; // client number of bytes per read attempt
 const ROSTER_WIDTH: u16 = 24; // Also server max user name and max room name lengths
 const CMD_CHAR: char = '/';
@@ -184,7 +183,6 @@ struct ClientConfigFile {
   address: Option<String>,
   name: Option<String>,
   timeout_ms: Option<u64>,
-  block_ms: Option<u64>,
   read_size: Option<usize>,
   roster_width: Option<u16>,
   cmd_char: Option<char>,
@@ -198,7 +196,6 @@ pub struct ClientConfig {
   pub address: String,
   pub name: String,
   pub tick: Duration,
-  pub block: Duration,
   pub read_size: usize,
   pub roster_width: u16,
   pub cmd_char: char,
@@ -249,7 +246,6 @@ impl ClientConfig {
       address: f.address.unwrap_or(String::from(ADDR)),
       name: f.name.unwrap_or(String::from(NAME)),
       tick: Duration::from_millis(f.timeout_ms.unwrap_or(CLIENT_TICK)),
-      block: Duration::from_millis(f.block_ms.unwrap_or(BLOCK_TIMEOUT)),
       read_size: f.read_size.unwrap_or(READ_SIZE),
       roster_width: f.roster_width.unwrap_or(ROSTER_WIDTH),
       cmd_char,
@@ -269,7 +265,6 @@ impl ClientConfig {
       address: Some(String::from(ADDR)),
       name: Some(String::from(NAME)),
       timeout_ms: Some(CLIENT_TICK),
-      block_ms: Some(BLOCK_TIMEOUT),
       read_size: Some(READ_SIZE),
       roster_width: Some(ROSTER_WIDTH),
       cmd_char: Some(CMD_CHAR),

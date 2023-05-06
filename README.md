@@ -1,6 +1,6 @@
-car# `fresh`
+# Fresh
 
-an IRC-like chat server/client in Rust
+an chat server/client made in Rust
 
 ### Overview
 
@@ -10,17 +10,10 @@ configure. There is a "reference" client, `fresh`, also written in Rust, but the
 protocol is meant to be sufficiently simple that clients (with a variety of
 features) should be easily implementable in any number of languages.
 
-### State
-
-Both `freshd` and `fresh` work, at least on Debian 10 and Windows 10, and, I
-suspect, any vaguely POSIX-y system that sports Rust's `cargo`. There are still
-features as yet to be implemented, like rate limiting and more effective
-blocking (See the TODO sections, below, for more details.)
-
 ### Installation
 
 Clone the repo and everything should `cargo build --release` just fine. This
-will build both the `fresh` client and the `freshd` server.
+will build both the `fresh` client and the server.
 
 ### Client instructions
 

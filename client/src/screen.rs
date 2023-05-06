@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use log::trace;
 use std::io::{Stdout, Write};
 
-use super::line::*;
+use common::line::*;
 
 const SPACE: char = ' ';
 const VBAR: char = '│';
@@ -370,34 +370,6 @@ impl Screen {
     self.lines_dirty = true;
   }
 
-  /** Scroll the roster up (or down, for negative values) `n_chars`,
-  or to the end (or beginning) if the new position would be out of range.
-  */
-  pub fn scroll_roster(&mut self, n_chars: i16) {
-    let rost_vsize = self.last_y_size - 3;
-    if rost_vsize as usize >= self.roster.len() {
-      if self.roster_scroll != 0 {
-        self.roster_dirty = true;
-      }
-      self.roster_scroll = 0;
-      return;
-    }
-    let max = (self.roster.len() - (rost_vsize as usize)) as i16;
-    let new = self.roster_scroll as i16 + n_chars;
-    if new < 0 {
-      if self.roster_scroll != 0 {
-        self.roster_dirty = true;
-      }
-      self.roster_scroll = 0;
-    } else if new > max {
-      self.roster_scroll = max as u16;
-      self.roster_dirty = true;
-    } else {
-      self.roster_scroll = new as u16;
-      self.roster_dirty = true;
-    }
-  }
-
   /** Return the contents of the input line as a String and clear
   the input line.
   */
@@ -422,12 +394,6 @@ impl Screen {
     self.stat_dirty = true;
   }
 
-  /** Set the size at which the `Screen` should be rendered. This is
-  intended to be the entire terminal window.
-
-  If the terminal changes size, this should be called before the next
-  call to `.refresh()`, or it probably won't look right.
-  */
   pub fn resize(&mut self, cols: u16, rows: u16) {
     if cols != self.last_x_size {
       let mut s = String::with_capacity(cols as usize);

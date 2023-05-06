@@ -1,3 +1,5 @@
+mod screen;
+
 use clap::Parser;
 use crossterm::{event, event::Event, event::KeyCode};
 use lazy_static::lazy_static;
@@ -6,10 +8,10 @@ use std::io::stdout;
 use std::net::TcpStream;
 use std::time::Instant;
 
+use crate::screen::Screen;
 use common::config::ClientConfig;
 use common::line::Line;
 use common::proto::{Rcvr, SndOp, Sndr};
-use common::screen::Screen;
 use common::socket::Sock;
 
 const JIFFY: std::time::Duration = std::time::Duration::from_millis(0);
@@ -70,7 +72,7 @@ struct ClapOpts {
   address: Option<String>,
 
   #[arg(
-    short = 'w',
+    short = 'g',
     long = "generate-default",
     default_value = "false",
     default_missing_value = "true"
@@ -367,10 +369,10 @@ fn command_key(evt: event::KeyEvent, scrn: &mut Screen, gv: &mut Globals) {
     KeyCode::Char(SPACE) | KeyCode::Enter => {
       gv.mode = Mode::Input;
     }
-    KeyCode::Up => {
+    KeyCode::Up | KeyCode::Char('k') => {
       scrn.scroll_lines(1);
     }
-    KeyCode::Down => {
+    KeyCode::Down | KeyCode::Char('j') => {
       scrn.scroll_lines(-1);
     }
     KeyCode::PageUp => {
