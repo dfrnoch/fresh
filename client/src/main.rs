@@ -103,13 +103,13 @@ fn configure() -> ClientConfig {
   };
 
   if let Some(n) = opts.name {
-    cfg.name = String::from(n);
+    cfg.name = n;
   }
   if let Some(a) = opts.address {
-    cfg.address = String::from(a);
+    cfg.address = a;
   }
 
-  return cfg;
+  cfg
 }
 
 /** Attempt to connect to the `freshd` server specified either on the
@@ -144,11 +144,11 @@ fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
     Ok(()) => {}
   }
 
-  return Ok(thesock);
+  Ok(thesock)
 }
 
 /** Divide &str s into alternating chunks of whitespace and non-whitespace. */
-fn tokenize_the_whitespace_too<'a>(s: &'a str) -> Vec<&'a str> {
+fn tokenize_the_whitespace_too(s: &str) -> Vec<&str> {
   let mut v: Vec<&str> = Vec::new();
 
   let mut change: usize = 0;
@@ -168,17 +168,15 @@ fn tokenize_the_whitespace_too<'a>(s: &'a str) -> Vec<&'a str> {
         change = i;
         in_ws = false;
       }
-    } else {
-      if c.is_whitespace() {
-        v.push(&s[change..i]);
-        change = i;
-        in_ws = true;
-      }
+    } else if c.is_whitespace() {
+      v.push(&s[change..i]);
+      change = i;
+      in_ws = true;
     }
   }
   v.push(&s[change..(s.len())]);
 
-  return v;
+  v
 }
 
 /** Split a vector of alternating whitespance-and-non tokens (as returned
@@ -200,14 +198,14 @@ fn split_command_toks<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a st
   let mut n: usize = 0;
   for _ in 0..n_cmds {
     cmds.push(toks[n]);
-    n = n + 2;
+    n += 2;
   }
   while n < toks.len() {
     arg.push_str(toks[n]);
-    n = n + 1;
+    n += 1;
   }
 
-  return Ok((cmds, arg));
+  Ok((cmds, arg))
 }
 
 /** In input mode, when the user hits return, this processes processes the
@@ -225,7 +223,7 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
       /* Collect the ipt vector as a string, discarding the cmd_char and
       translating newlines to spaces. */
       let cmd_line: String = ipt[1..]
-        .into_iter()
+        .iter()
         .map(|c| if *c == RETURN { SPACE } else { *c })
         .collect();
 
@@ -334,7 +332,7 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
           }
         },
 
-        x @ _ => {
+        x => {
           let mut sl = Line::default();
           sl.pushf("# Unknown command ", &scrn.styles().dim);
           sl.pushf(x, &scrn.styles().dim_bold);
@@ -471,7 +469,7 @@ fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Result
     should_refresh = true;
   }
 
-  return Ok(should_refresh);
+  Ok(should_refresh)
 }
 
 /** When the Sock coughs up a Msg, this function decides what to do with it.
@@ -583,9 +581,9 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         sl.push("$ ");
         sl.pushf("You", &scrn.styles().dim_bold);
         sl.pushf(" @ ", &scrn.styles().dim);
-        sl.pushf(&name, &scrn.styles().high);
+        sl.pushf(name, &scrn.styles().high);
         sl.push(": ");
-        sl.push(&text);
+        sl.push(text);
         scrn.push_line(sl);
       }
 
@@ -638,7 +636,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
       }
 
       "roster" => {
-        if data.len() < 1 {
+        if data.is_empty() {
           return Err(format!("Incomplete data: {:?}", &m));
         }
         scrn.set_roster(data);
@@ -695,13 +693,13 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
       }
     },
 
-    msg @ _ => {
+    msg => {
       let msgs = format!("{:?}", msg);
       let s: String = msgs
         .chars()
         .map(|c| match c {
           RETURN => SPACE,
-          x @ _ => x,
+          x => x,
         })
         .collect();
       let mut sl = Line::default();
@@ -710,7 +708,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
       scrn.push_line(sl);
     }
   }
-  return Ok(());
+  Ok(())
 }
 
 /** When the mode line (in the lower-left-hand corner) should change,
@@ -819,7 +817,7 @@ fn main() {
             if let Err(e) = scrn.refresh(&mut term) {
               gv.messages.push(format!("Error refreshing screen: {}", e));
               break 'main_loop;
-            } else if gv.run == false {
+            } else if !gv.run {
               break 'main_loop;
             }
           }
@@ -869,7 +867,7 @@ fn main() {
               Ok(Some(msg)) => {
                 match process_msg(msg, &mut scrn, &mut gv) {
                   Ok(()) => {
-                    if gv.run == false {
+                    if !gv.run {
                       break 'main_loop;
                     }
                   }

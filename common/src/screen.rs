@@ -188,22 +188,10 @@ impl Screen {
     high_bg: Option<u8>,
     underline: bool,
   ) {
-    let dfg = match dim_fg {
-      None => None,
-      Some(n) => Some(style::Color::AnsiValue(n)),
-    };
-    let dbg = match dim_bg {
-      None => None,
-      Some(n) => Some(style::Color::AnsiValue(n)),
-    };
-    let hfg = match high_fg {
-      None => None,
-      Some(n) => Some(style::Color::AnsiValue(n)),
-    };
-    let hbg = match high_bg {
-      None => None,
-      Some(n) => Some(style::Color::AnsiValue(n)),
-    };
+    let dfg = dim_fg.map(style::Color::AnsiValue);
+    let dbg = dim_bg.map(style::Color::AnsiValue);
+    let hfg = high_fg.map(style::Color::AnsiValue);
+    let hbg = high_bg.map(style::Color::AnsiValue);
     let attr = match underline {
       true => style::Attribute::Underlined,
       false => style::Attribute::Bold,
