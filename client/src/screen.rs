@@ -192,9 +192,10 @@ impl Screen {
     let dbg = dim_bg.map(style::Color::AnsiValue);
     let hfg = high_fg.map(style::Color::AnsiValue);
     let hbg = high_bg.map(style::Color::AnsiValue);
-    let attr = match underline {
-      true => style::Attribute::Underlined,
-      false => style::Attribute::Bold,
+    let attr = if underline {
+        style::Attribute::Underlined
+    } else {
+        style::Attribute::Bold
     };
 
     let new_styles = Styles {
@@ -594,16 +595,13 @@ impl Screen {
     }
     term.queue(style::Print(&self.bits.stat_end))?;
 
-    let ur_offs: u16 = match self.stat_ur.len() > space_each {
-      true => {
+    let ur_offs: u16 = if self.stat_ur.len() > space_each {
         self.last_x_size
           - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_each) as u16
-      }
-      false => {
+      } else {
         self.last_x_size
           - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + self.stat_ur.len()) as u16
-      }
-    };
+      };
 
     term
       .queue(cursor::MoveTo(ur_offs, 0))?

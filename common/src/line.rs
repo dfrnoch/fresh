@@ -245,9 +245,10 @@ impl Line {
   }
 
   pub fn first_n_chars(&mut self, n: usize) -> &str {
-    let tgt = match n < self.chars.len() {
-      true => n,
-      false => self.chars.len(),
+    let tgt = if n < self.chars.len() {
+        n
+    } else {
+        self.chars.len()
     };
 
     match self.nchars {
