@@ -6,15 +6,13 @@ use lazy_static::lazy_static;
 use log::{debug, error, trace};
 use std::io::stdout;
 use std::net::TcpStream;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::screen::Screen;
 use common::config::ClientConfig;
 use common::line::Line;
 use common::proto::{Rcvr, SndOp, Sndr};
 use common::socket::Sock;
-
-const JIFFY: std::time::Duration = std::time::Duration::from_millis(0);
 
 lazy_static! {
   static ref PING: Vec<u8> = Sndr::Ping.bytes();
@@ -216,8 +214,6 @@ content of the input line and decides what to do.
 fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
   if let Some(c) = ipt.first() {
     if *c == gv.cmd {
-      /* If the only thing in the input line is a single semicolon,
-      the rest of this tokenizing stuff will panic, so bail here. */
       if ipt.len() == 1 {
         return;
       }
@@ -363,7 +359,6 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
   });
 }
 
-/** Respond to keypress events in _command_ mode. */
 fn command_key(evt: event::KeyEvent, scrn: &mut Screen, gv: &mut Globals) {
   match evt.code {
     KeyCode::Char(SPACE) | KeyCode::Enter => {
@@ -449,7 +444,7 @@ to redraw (some portion of) the screen.
 fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Result<bool> {
   let mut should_refresh: bool = false;
 
-  while event::poll(JIFFY)? {
+  while event::poll(Duration::from_millis(0))? {
     let cur_mode = gv.mode;
 
     match event::read()? {
@@ -461,7 +456,6 @@ fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Result
         }
       }
       Event::Resize(w, h) => scrn.resize(w, h),
-      Event::Mouse(evt) => debug!("Mouse events not supported: {:?}", evt),
       _ => {}
     }
 
@@ -873,7 +867,6 @@ fn main() {
         }
       }
 
-      /* If the scrollback buffer has grown too large, prune it down. */
       if scrn.get_scrollback_length() > cfg.max_scrollback {
         scrn.prune_scrollback(cfg.min_scrollback);
       }

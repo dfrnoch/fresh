@@ -38,8 +38,6 @@ default values) are
   the main loop. Setting this to a smaller value will make typing feel snappier,
   but may consume more system resources.
 
-- `block_ms = 5000` I don't think this currently has a function.
-
 - `read_size = 1024` The the amount (in bytes) the client attempts to read from
   its connection with the server each time through the main loop. The default
   amount is almost undoubtedly fine. Setting this to a very low number will
@@ -59,36 +57,6 @@ default values) are
 - `min_scrollback = 1000` When the scrollback buffer reaches `max_scrollback`,
   it will be trimmed to this many lines. For reasons that should be obvious,
   this must be smaller than `max_scrollback`.
-
-There is also an optional `[colors]` stanza. The default colors work well for
-some terminal color schemes, but not others, so this allows you to customize the
-client so that it looks reasonable.
-
-There are three types of text the client will show:
-
-- normal text, which is displayed in the colors your terminal is already using
-- dim text, which by default is high-intensity black on whatever background
-  color your terminal is using
-- highlighted text, which by default is high-intensity white on whatever
-  background colr your teminal is using
-
-The stanza then looks something like this:
-
-```toml
-[colors]
-dim_foreground = 8
-dim_background = 0
-highlight_foreground = 15
-highlight_background = 0
-underline_as_bold = false
-```
-
-Where each of the color value is
-[a number from 0-255](https://jonasjacek.github.io/colors/), and the
-`underline_as_bold` option sets whether the terminal should attempt to use
-underlining anywhere it would otherwise attempt to use bold text (as bold
-doesn't show up well or render properly on some systems). Omitting any of these
-values will default to normal terminal coloring.
 
 #### Use
 
