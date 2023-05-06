@@ -169,16 +169,14 @@ fn listen(addr: String, tx: mpsc::Sender<User>) {
           "listen(): Accepted connection from {:?}",
           stream.peer_addr().unwrap()
         );
-        let new_sock: Sock;
-        match Sock::new(stream) {
+        let new_sock: Sock = match Sock::new(stream) {
           Err(e) => {
             debug!("listen(): Error setting up new Sock: {}", &e);
             continue;
           }
-          Ok(x) => {
-            new_sock = x;
-          }
-        }
+          Ok(x) => x,
+        };
+
         let mut u = User::new(new_sock, new_user_id);
         match initial_negotiation(&mut u) {
           Err(e) => {
@@ -666,8 +664,6 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
       }
 
       let mut altstr: String;
-      /* The lobby will never have an operator. It's operator uid is
-      set to 0 (the lowest possible uid is 100). */
       if op_id == 0 {
         altstr = format!("{} roster: ", r.get_name());
         append_comma_delimited_list(&mut altstr, &names_list);
@@ -701,21 +697,21 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
     "who" => {
       let collapsed = collapse(&arg);
       let matches = match_string(&collapsed, ctxt.ustr);
-      let env: Env;
-      if matches.is_empty() {
-        env = Env::new(
+
+      let env: Env = if matches.is_empty() {
+        Env::new(
           End::Server,
           End::User(ctxt.uid),
           &Sndr::Info(&format!(
             "No users matching the pattern \"{}\".",
             &collapsed
           )),
-        );
+        )
       } else {
         let mut altstr = String::from("Matching names: ");
         append_comma_delimited_list(&mut altstr, &matches);
         let listref: Vec<&str> = matches.iter().map(|x| x.as_str()).collect();
-        env = Env::new(
+        Env::new(
           End::Server,
           End::User(ctxt.uid),
           &Sndr::Misc {
@@ -723,29 +719,28 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
             data: &listref,
             alt: &altstr,
           },
-        );
-      }
+        )
+      };
       Ok(Envs::new1(env))
     }
 
     "rooms" => {
       let collapsed = collapse(&arg);
       let matches = match_string(&collapsed, ctxt.rstr);
-      let env: Env;
-      if matches.is_empty() {
-        env = Env::new(
+      let env: Env = if matches.is_empty() {
+        Env::new(
           End::Server,
           End::User(ctxt.uid),
           &Sndr::Info(&format!(
             "No Rooms matching the pattern \"{}\".",
             &collapsed
           )),
-        );
+        )
       } else {
         let mut altstr = String::from("Matching Rooms: ");
         append_comma_delimited_list(&mut altstr, &matches);
         let listref: Vec<&str> = matches.iter().map(|x| x.as_str()).collect();
-        env = Env::new(
+        Env::new(
           End::Server,
           End::User(ctxt.uid),
           &Sndr::Misc {
@@ -753,8 +748,8 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
             data: &listref,
             alt: &altstr,
           },
-        );
-      }
+        )
+      };
       Ok(Envs::new1(env))
     }
 
@@ -1410,64 +1405,61 @@ fn main() {
       }
     }
 
-    match urecvr.try_recv() {
-      Ok(mut u) => {
-        debug!("Accepting user {}: {}", u.get_id(), u.get_name());
-        u.deliver_msg(&Sndr::Info(&cfg.welcome));
+    if let Ok(mut u) = urecvr.try_recv() {
+      debug!("Accepting user {}: {}", u.get_id(), u.get_name());
+      u.deliver_msg(&Sndr::Info(&cfg.welcome));
 
-        let mut rename: Option<String> = None;
-        if u.get_idstr().is_empty() {
-          rename = Some(String::from(
-            "Your name does not have enough whitespace characters.",
-          ));
-        } else if u.get_name().len() > cfg.max_user_name_length {
+      let mut rename: Option<String> = None;
+      if u.get_idstr().is_empty() {
+        rename = Some(String::from(
+          "Your name does not have enough whitespace characters.",
+        ));
+      } else if u.get_name().len() > cfg.max_user_name_length {
+        rename = Some(format!(
+          "Your name cannot be longer than {} chars.",
+          cfg.max_user_name_length
+        ));
+      } else {
+        let maybe_same_name = ustr_map.get(u.get_idstr());
+        if let Some(user_n) = maybe_same_name {
           rename = Some(format!(
-            "Your name cannot be longer than {} chars.",
-            cfg.max_user_name_length
+            "Name \"{}\" exists.",
+            user_map.get(user_n).unwrap().get_name()
           ));
-        } else {
-          let maybe_same_name = ustr_map.get(u.get_idstr());
-          if let Some(user_n) = maybe_same_name {
-            rename = Some(format!(
-              "Name \"{}\" exists.",
-              user_map.get(user_n).unwrap().get_name()
-            ));
-          }
         }
-
-        if let Some(err_msg) = rename {
-          let new_name = gen_name(u.get_id(), &ustr_map);
-          let msg = Sndr::Err(&err_msg);
-          u.deliver_msg(&msg);
-          let old_name = u.get_name().to_string();
-          let dat: [&str; 2] = [&old_name, &new_name];
-          let altstr = format!("You are now known as \"{}\".", &new_name);
-          let msg = Sndr::Misc {
-            what: "name",
-            data: &dat,
-            alt: &altstr,
-          };
-          u.set_name(&new_name);
-          u.deliver_msg(&msg);
-        }
-
-        let dat: [&str; 2] = [u.get_name(), &cfg.lobby_name];
-        let env = Env::new(
-          End::Server,
-          End::Room(0),
-          &Sndr::Misc {
-            what: "join",
-            data: &dat,
-            alt: &format!("{} joins {}.", u.get_name(), &cfg.lobby_name),
-          },
-        );
-        let lobby = room_map.get_mut(&0).unwrap();
-        lobby.join(u.get_id());
-        lobby.enqueue(env);
-        ustr_map.insert(u.get_idstr().to_string(), u.get_id());
-        user_map.insert(u.get_id(), u);
       }
-      Err(_) => {}
+
+      if let Some(err_msg) = rename {
+        let new_name = gen_name(u.get_id(), &ustr_map);
+        let msg = Sndr::Err(&err_msg);
+        u.deliver_msg(&msg);
+        let old_name = u.get_name().to_string();
+        let dat: [&str; 2] = [&old_name, &new_name];
+        let altstr = format!("You are now known as \"{}\".", &new_name);
+        let msg = Sndr::Misc {
+          what: "name",
+          data: &dat,
+          alt: &altstr,
+        };
+        u.set_name(&new_name);
+        u.deliver_msg(&msg);
+      }
+
+      let dat: [&str; 2] = [u.get_name(), &cfg.lobby_name];
+      let env = Env::new(
+        End::Server,
+        End::Room(0),
+        &Sndr::Misc {
+          what: "join",
+          data: &dat,
+          alt: &format!("{} joins {}.", u.get_name(), &cfg.lobby_name),
+        },
+      );
+      let lobby = room_map.get_mut(&0).unwrap();
+      lobby.join(u.get_id());
+      lobby.enqueue(env);
+      ustr_map.insert(u.get_idstr().to_string(), u.get_id());
+      user_map.insert(u.get_id(), u);
     }
 
     let loop_time = Instant::now().duration_since(now);

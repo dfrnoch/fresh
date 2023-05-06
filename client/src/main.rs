@@ -129,8 +129,9 @@ fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
   };
   let b = Sndr::Name(&cfg.name).bytes();
   let res = thesock.blocking_send(&b, cfg.tick);
-  match res {
-    Err(e) => match thesock.shutdown() {
+
+  if let Err(e) = res {
+    match thesock.shutdown() {
       Err(ee) => {
         return Err(format!(
           "Error in initial protocol: {}; error during shutdown: {}",
@@ -140,8 +141,7 @@ fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
       Ok(()) => {
         return Err(format!("Error in initial protocol: {}", e));
       }
-    },
-    Ok(()) => {}
+    }
   }
 
   Ok(thesock)

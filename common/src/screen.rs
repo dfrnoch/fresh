@@ -557,9 +557,7 @@ impl Screen {
     let third = self.last_x_size / 3;
     let maxpos = self.last_x_size - third;
     let startpos = {
-      if self.input.len() < self.last_x_size as usize {
-        0
-      } else if self.input_ip < third {
+      if self.input.len() < self.last_x_size as usize || self.input_ip < third {
         0
       } else if self.input_ip > maxpos {
         self.input_ip - maxpos
@@ -567,6 +565,7 @@ impl Screen {
         self.input_ip - third
       }
     };
+
     let endpos = {
       if startpos + self.last_x_size > (self.input.len() as u16) {
         self.input.len() as u16

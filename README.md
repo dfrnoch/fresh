@@ -214,26 +214,11 @@ and you may want to redirect `stdout` to a specific file.
 
 ### TODO (server):
 
-- IP specific blocks/bans. Server doesn't
-  really know anything about the client's IP address.
+- IP specific blocks/bans. Server doesn't really know anything about the
+  client's IP address.
 
 ### TODO (client):
 
-- ~~A bunch of command-mode functionality needs to be implemented, like
-  done; some isn't.)~~ This is in pretty good shape as of 2021-01-31, so as I
-  think of specific things, I'll add them to this list.
-
 - `vi`-like search in the scrollback history
 
-- Input line history? Like Up/Down should scroll through input 
-
-I am happy to entertain feature requests, but simplicity is a goal.
-
-### A final confession
-
-Test coverage is poor. Some of the modules have tests for some of the functions
-and methods. Mostly this is just because I am lazy, and _most_ of what
-transpires between the various elements in this software is simple. Much of the
-client functionality is poorly-tested because it's dificult to write tests for
-terminal output---here, the tests tend to be things you look at and say, "Yeah,
-that looks right."
+- Input line history
