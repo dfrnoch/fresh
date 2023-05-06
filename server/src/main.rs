@@ -1225,7 +1225,7 @@ fn process_room(
     ctxt.uid = *uid;
 
     let pres = match m {
-      Rcvr::Text { who: _, lines: l } => do_text(&mut ctxt, l),
+      Rcvr::Text { lines: l, .. } => do_text(&mut ctxt, l),
       Rcvr::Priv { who, text } => do_priv(&mut ctxt, who, text),
       Rcvr::Name(new_candidate) => do_name(&mut ctxt, cfg, new_candidate),
       Rcvr::Join(room_name) => do_join(&mut ctxt, cfg, room_name),
