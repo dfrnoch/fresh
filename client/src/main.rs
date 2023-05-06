@@ -768,7 +768,7 @@ fn main() {
     uname: cfg.name.clone(),
     rname: String::from("Lobby"),
     mode: Mode::Input,
-    local_addr: String::new(),
+    local_addr: String::default(),
     messages: Vec::new(),
     server_addr: sck.get_addr().unwrap(),
     socket: sck,
@@ -785,16 +785,6 @@ fn main() {
         std::process::exit(1);
       }
     };
-    if let Some(cols) = cfg.colors {
-      let uline = cols.underline_as_bold.unwrap_or(false);
-      scrn.set_styles(
-        cols.dim_foreground,
-        cols.dim_background,
-        cols.highlight_foreground,
-        cols.highlight_background,
-        uline,
-      );
-    }
 
     let mut addr_line = Line::default();
     addr_line.pushf(&gv.server_addr, &scrn.styles().high);

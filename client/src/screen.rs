@@ -40,10 +40,6 @@ lazy_static! {
   );
 }
 
-/** This struct holds the different styles used for text shown by the client.
-This helps maintain a theme, instead of just setting whatever colors and
-attributes wherever.
-*/
 pub struct Styles {
   pub dim: Style,
   pub dim_bold: Style,
@@ -64,10 +60,6 @@ impl Default for Styles {
   }
 }
 
-/** The `Bits` struct holds prerendered bits of stuff that must be
-repeatedly written to the screen, like a full-width horizontal separator
-and the starting and ending borders of status text on the status lines.
-*/
 struct Bits {
   stat_begin: String,
   stat_begin_chars: usize,
@@ -174,40 +166,6 @@ impl Screen {
   */
   pub fn styles(&self) -> &Styles {
     &(self.styles)
-  }
-
-  /** Set the color scheme for the terminal. `u8`s are ANSI color numbers;
-  setting `underline` true specifies using underlining in place of bold
-  text.
-  */
-  pub fn set_styles(
-    &mut self,
-    dim_fg: Option<u8>,
-    dim_bg: Option<u8>,
-    high_fg: Option<u8>,
-    high_bg: Option<u8>,
-    underline: bool,
-  ) {
-    let dfg = dim_fg.map(style::Color::AnsiValue);
-    let dbg = dim_bg.map(style::Color::AnsiValue);
-    let hfg = high_fg.map(style::Color::AnsiValue);
-    let hbg = high_bg.map(style::Color::AnsiValue);
-    let attr = if underline {
-      style::Attribute::Underlined
-    } else {
-      style::Attribute::Bold
-    };
-
-    let new_styles = Styles {
-      dim: Style::new(dfg, dbg, None),
-      dim_bold: Style::new(dfg, dbg, Some(&[attr])),
-      bold: Style::new(None, None, Some(&[attr])),
-      high: Style::new(hfg, hbg, None),
-      high_bold: Style::new(hfg, hbg, Some(&[attr])),
-    };
-
-    self.styles = new_styles;
-    self.bits = Bits::new(&self.styles, self.last_x_size);
   }
 
   /** Return the height of the main scrollback window. */
@@ -631,9 +589,6 @@ impl Screen {
     Ok(())
   }
 
-  /** Redraw any parts of the `Screen` that have changed since the last
-  call to `.refresh()`.
-  */
   pub fn refresh(&mut self, term: &mut Stdout) -> Result<(), String> {
     trace!("Screen::refresh(...) called");
     if !(self.lines_dirty || self.input_dirty || self.roster_dirty || self.stat_dirty) {

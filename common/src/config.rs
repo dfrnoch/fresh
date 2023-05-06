@@ -127,33 +127,28 @@ impl ServerConfig {
     };
 
     ServerConfig {
-      address: cfgf.address.unwrap_or(ADDR.to_string()),
-      min_tick: Duration::from_millis(cfgf.tick_ms.unwrap_or(SERVER_TICK)),
+      address: cfgf.address.unwrap_or_else(|| ADDR.to_string()),
+      min_tick: Duration::from_millis(cfgf.tick_ms.unwrap_or_else(|| SERVER_TICK)),
       blackout_time_to_ping: Duration::from_millis(
-        cfgf.blackout_to_ping_ms.unwrap_or(BLACKOUT_TO_PING),
+        cfgf.blackout_to_ping_ms.unwrap_or_else(|| BLACKOUT_TO_PING),
       ),
       blackout_time_to_kick: Duration::from_millis(
-        cfgf.blackout_to_kick_ms.unwrap_or(BLACKOUT_TO_KICK),
+        cfgf.blackout_to_kick_ms.unwrap_or_else(|| BLACKOUT_TO_KICK),
       ),
-      max_user_name_length: cfgf.max_user_name_length.unwrap_or(ROSTER_WIDTH as usize),
-      max_room_name_length: cfgf.max_room_name_length.unwrap_or(ROSTER_WIDTH as usize),
-      lobby_name: cfgf.lobby_name.unwrap_or(LOBBY_NAME.to_string()),
-      welcome: cfgf.welcome.unwrap_or(WELCOME.to_string()),
-      log_file: cfgf.log_file.unwrap_or(SERVER_LOG.to_string()),
+      max_user_name_length: cfgf
+        .max_user_name_length
+        .unwrap_or_else(|| ROSTER_WIDTH as usize),
+      max_room_name_length: cfgf
+        .max_room_name_length
+        .unwrap_or_else(|| ROSTER_WIDTH as usize),
+      lobby_name: cfgf.lobby_name.unwrap_or_else(|| LOBBY_NAME.to_string()),
+      welcome: cfgf.welcome.unwrap_or_else(|| WELCOME.to_string()),
+      log_file: cfgf.log_file.unwrap_or_else(|| SERVER_LOG.to_string()),
       log_level: logl,
-      byte_limit: cfgf.byte_limit.unwrap_or(BYTE_LIMIT),
-      byte_tick: cfgf.bytes_per_tick.unwrap_or(BYTE_TICK),
+      byte_limit: cfgf.byte_limit.unwrap_or_else(|| BYTE_LIMIT),
+      byte_tick: cfgf.bytes_per_tick.unwrap_or_else(|| BYTE_TICK),
     }
   }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
-pub struct Colors {
-  pub dim_foreground: Option<u8>,
-  pub dim_background: Option<u8>,
-  pub highlight_foreground: Option<u8>,
-  pub highlight_background: Option<u8>,
-  pub underline_as_bold: Option<bool>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -166,7 +161,6 @@ struct ClientConfigFile {
   cmd_char: Option<char>,
   max_scrollback: Option<usize>,
   min_scrollback: Option<usize>,
-  colors: Option<Colors>,
 }
 
 #[derive(Debug)]
@@ -179,7 +173,6 @@ pub struct ClientConfig {
   pub cmd_char: char,
   pub max_scrollback: usize,
   pub min_scrollback: usize,
-  pub colors: Option<Colors>,
 }
 
 impl ClientConfig {
@@ -209,9 +202,9 @@ impl ClientConfig {
       }
     };
 
-    let max_scroll = f.max_scrollback.unwrap_or(MAX_SCROLLBACK);
-    let min_scroll = f.min_scrollback.unwrap_or(MIN_SCROLLBACK);
-    let cmd_char = f.cmd_char.unwrap_or(CMD_CHAR);
+    let max_scroll = f.max_scrollback.unwrap_or_else(|| MAX_SCROLLBACK);
+    let min_scroll = f.min_scrollback.unwrap_or_else(|| MIN_SCROLLBACK);
+    let cmd_char = f.cmd_char.unwrap_or_else(|| CMD_CHAR);
 
     if max_scroll < min_scroll {
       return Err("max_scrollback cannot be smaller than min_scrollback".to_string());
@@ -221,15 +214,14 @@ impl ClientConfig {
     };
 
     let cc = ClientConfig {
-      address: f.address.unwrap_or(String::from(ADDR)),
-      name: f.name.unwrap_or(String::from(NAME)),
-      tick: Duration::from_millis(f.timeout_ms.unwrap_or(CLIENT_TICK)),
-      read_size: f.read_size.unwrap_or(READ_SIZE),
-      roster_width: f.roster_width.unwrap_or(ROSTER_WIDTH),
+      address: f.address.unwrap_or_else(|| String::from(ADDR)),
+      name: f.name.unwrap_or_else(|| String::from(NAME)),
+      tick: Duration::from_millis(f.timeout_ms.unwrap_or_else(|| CLIENT_TICK)),
+      read_size: f.read_size.unwrap_or_else(|| READ_SIZE),
+      roster_width: f.roster_width.unwrap_or_else(|| ROSTER_WIDTH),
       cmd_char,
       max_scrollback: max_scroll,
       min_scrollback: min_scroll,
-      colors: f.colors,
     };
 
     Ok(cc)
@@ -248,7 +240,6 @@ impl ClientConfig {
       cmd_char: Some(CMD_CHAR),
       max_scrollback: Some(MAX_SCROLLBACK),
       min_scrollback: Some(MIN_SCROLLBACK),
-      colors: Some(Colors::default()),
     };
 
     let mut cfg_path = default_config_dir();
