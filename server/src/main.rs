@@ -1038,7 +1038,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
       };
 
       let in_room: bool;
-      let mut cur_room_name = String::new();
+      let mut cur_room_name = String::default();
 
       {
         let cur_r = match ctxt.rmap.get_mut(&ctxt.rid) {

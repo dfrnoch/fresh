@@ -29,7 +29,7 @@ lazy_static! {
   );
   static ref DEFAULT_REVERSE: Style = Style::new(None, None, Some(&[style::Attribute::Reverse]));
   static ref VBARSTR: String = {
-    let mut s = String::new();
+    let mut s = String::default();
     s.push(VBAR);
     s
   };
@@ -52,7 +52,7 @@ pub struct Styles {
   pub high_bold: Style,
 }
 
-impl std::default::Default for Styles {
+impl Default for Styles {
   fn default() -> Self {
     Styles {
       dim: DEFAULT_DIM.clone(),
@@ -193,9 +193,9 @@ impl Screen {
     let hfg = high_fg.map(style::Color::AnsiValue);
     let hbg = high_bg.map(style::Color::AnsiValue);
     let attr = if underline {
-        style::Attribute::Underlined
+      style::Attribute::Underlined
     } else {
-        style::Attribute::Bold
+      style::Attribute::Bold
     };
 
     let new_styles = Styles {
@@ -418,7 +418,7 @@ impl Screen {
   fn refresh_lines(&mut self, term: &mut Stdout, width: u16, height: u16) -> crossterm::Result<()> {
     trace!("Screen::refresh_lines(..., {}, {}) called", &width, &height);
     let blank: String = {
-      let mut s = String::new();
+      let mut s = String::default();
       for _ in 0..width {
         s.push(SPACE);
       }
@@ -480,7 +480,7 @@ impl Screen {
     let urw: usize = self.roster_width as usize;
 
     let blank: String = {
-      let mut s = String::new();
+      let mut s = String::default();
       for _ in 0..self.roster_width {
         s.push(SPACE);
       }
@@ -596,12 +596,12 @@ impl Screen {
     term.queue(style::Print(&self.bits.stat_end))?;
 
     let ur_offs: u16 = if self.stat_ur.len() > space_each {
-        self.last_x_size
-          - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_each) as u16
-      } else {
-        self.last_x_size
-          - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + self.stat_ur.len()) as u16
-      };
+      self.last_x_size
+        - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_each) as u16
+    } else {
+      self.last_x_size
+        - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + self.stat_ur.len()) as u16
+    };
 
     term
       .queue(cursor::MoveTo(ur_offs, 0))?

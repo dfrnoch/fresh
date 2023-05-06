@@ -216,7 +216,7 @@ impl Line {
   }
 
   fn render_n_chars(&mut self, n: usize) {
-    let mut s = String::new();
+    let mut s = String::default();
     let mut fmt_iter = self.fdirs.iter();
     let mut nextf = fmt_iter.next();
 
@@ -246,9 +246,9 @@ impl Line {
 
   pub fn first_n_chars(&mut self, n: usize) -> &str {
     let tgt = if n < self.chars.len() {
-        n
+      n
     } else {
-        self.chars.len()
+      self.chars.len()
     };
 
     match self.nchars {

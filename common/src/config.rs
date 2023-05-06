@@ -29,7 +29,7 @@ const MAX_SCROLLBACK: usize = 2000; // client will trim scrollback to MIN_SCROLL
 /// Generates a platform-specific path
 fn default_config_dir() -> PathBuf {
   match directories::BaseDirs::new() {
-    None => PathBuf::new(),
+    None => PathBuf::default(),
     Some(d) => d.config_dir().to_path_buf(),
   }
 }
@@ -52,7 +52,7 @@ fn read_first_to_string(ps: &[PathBuf]) -> Result<String, String> {
   Err(misses)
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 struct ServerConfigFile {
   address: Option<String>,
   tick_ms: Option<u64>,
@@ -66,28 +66,6 @@ struct ServerConfigFile {
   log_level: Option<u8>,
   byte_limit: Option<usize>,
   bytes_per_tick: Option<usize>,
-}
-
-/** `ServerConfigFile` implements `Default` because this is what is used if
-a configuration file can't be read.
-*/
-impl std::default::Default for ServerConfigFile {
-  fn default() -> Self {
-    Self {
-      address: None,              //String::from(ADDR),
-      tick_ms: None,              //SERVER_TICK,
-      blackout_to_ping_ms: None,  //5000,
-      blackout_to_kick_ms: None,  //10000,
-      max_user_name_length: None, //24,
-      max_room_name_length: None, //24,
-      lobby_name: None,           //String::from(LOBBY_NAME),
-      welcome: None,              //String::from(WELCOME),
-      log_file: None,             //String::from(SERVER_LOG),
-      log_level: None,            //5,
-      byte_limit: None,           //BYTE_LIMIT,
-      bytes_per_tick: None,       //BYTE_TICK,
-    }
-  }
 }
 
 /** The `ServerConfig` struct holds data read (and interpreted) from a

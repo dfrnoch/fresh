@@ -195,7 +195,7 @@ fn split_command_toks<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a st
   }
 
   let mut cmds: Vec<&'a str> = Vec::new();
-  let mut arg: String = String::new();
+  let mut arg: String = String::default();
 
   let mut n: usize = 0;
   for _ in 0..n_cmds {
@@ -346,11 +346,11 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
   }
 
   let mut lines: Vec<String> = Vec::new();
-  let mut cur_line = String::new();
+  let mut cur_line = String::default();
   for c in ipt.into_iter() {
     if c == '\n' {
       lines.push(cur_line);
-      cur_line = String::new();
+      cur_line = String::default();
     } else {
       cur_line.push(c);
     }
@@ -602,7 +602,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         if old.as_str() == gv.uname.as_str() {
           sl.pushf("You", &scrn.styles().bold);
           sl.push(" are now known as ");
-          gv.uname = new.clone();
+          gv.uname.clone_from(new);
           write_mode_line(scrn, gv);
         } else {
           sl.pushf(old, &scrn.styles().high);
@@ -682,7 +682,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
           return Err(format!("Incomplete data: {:?}", &m));
         }
         Some(addr) => {
-          gv.local_addr = addr.clone();
+          gv.local_addr.clone_from(addr);
           write_mode_line(scrn, gv);
         }
       },

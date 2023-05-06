@@ -348,6 +348,6 @@ pub fn collapse(s: &str) -> String {
   let collapsed: String = without_diacritics
     .split_whitespace()
     .collect::<Vec<&str>>()
-    .join("");
+    .concat();
   collapsed
 }
