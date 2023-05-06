@@ -1,0 +1,20 @@
+[package]
+name = "fresh-client"
+version = "0.2.0"
+authors = ["David Frnoch <frnoch@pm.me>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+directories = "5.0.0"
+toml = "0.7.3"
+lazy_static = "1.4.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4.11"
+simplelog = "0.12.1"
+crossterm = "0.26.1"
+clap = { version = "4.2.1", features = ["derive"] }
+smallvec = "1.6.1"
+common = { path = "../common" }
