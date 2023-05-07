@@ -19,59 +19,51 @@ binary.
 #### Configuration
 
 Run `fresh -g` to generate a default config file; this will save it to the
-dafault config dir. You'll probably want to at least set the server address. The
-config options (and their default values) are
+default config dir. You'll probably want to at least set the server address. The
+config options are
 
-- `address = '127.0.0.1:1234'` The IP address and port of the server to which
-  you'd like to connect. This can be overridden with the `-a` command-line
-  option.
-
-- `name = 'fresh user'` The name you'd like to (attempt to) use when connecting
-  to the server. If a sufficiently similar name is taken, you will be renamed to
-  something generic (but unique). This can be overridden with the `-n`
+- `address`: This specifies the IP address and port of the server that the
+  client should connect to. To override the default value, use the `-a`
   command-line option.
 
-- `timeout_ms = 100` Minimum amount of time (in milliseconds) per iteration of
-  the main loop. Setting this to a smaller value will make typing feel snappier,
-  but may consume more system resources.
+- `name`: This sets the desired name to use when connecting to the server. If
+  the chosen name is already in use, a generic name will be assigned instead.
+  The default value can be changed using the `-n` command-line option.
 
-- `read_size = 1024` The the amount (in bytes) the client attempts to read from
-  its connection with the server each time through the main loop. The default
-  amount is almost undoubtedly fine. Setting this to a very low number will
-  impact your experience; setting this to 0 will render the client inoperable.
+- `timeout_ms`: This sets the minimum amount of time (in milliseconds) that each
+  iteration of the main loop should take. Decreasing this value can make the
+  client feel more responsive, but may increase resource usage.
 
-- `roster_width = 24` Number of characters wide to draw the panel that holds the
-  current `Room`'s roster. By default, the server limits user names to 24
-  characters, so this is a reasonable width.
+- `read_size`: This determines the number of bytes to read from the server
+  during each iteration of the main loop. The default value is typically
+  sufficient. Setting this to a very low number will affect performance, and
+  setting it to 0 will make the client unusable.
 
-- `cmd_char = ';'` The character prepended to an input line to indicate to the
-  client it should be interpreted as a _command_, rather than just as text to be
-  sent to the chat. These instructions will assume the default value.
+- `roster_width`: This specifies the width (in characters) of the panel that
+  displays the current room's roster. As the server limits usernames to 24
+  characters, this setting is set to a reasonable default value.
 
-- `max_scrollback = 2000` The maximum number of lines to keep in the scrollback
-  buffer.
+- `cmd_char`: This is the character used to indicate that a line of input should
+  be interpreted as a command rather than plain text. The default value will be
+  assumed in the following instructions.
 
-- `min_scrollback = 1000` When the scrollback buffer reaches `max_scrollback`,
-  it will be trimmed to this many lines. For reasons that should be obvious,
-  this must be smaller than `max_scrollback`.
+- `max_scrollback`: This sets the maximum number of lines to keep in the
+  scrollback buffer.
+
+- `min_scrollback`: This specifies the minimum number of lines to retain when
+  the scrollback buffer reaches its maximum capacity. It should be noted that
+  this value must be smaller than `max_scrollback`.
 
 #### Use
 
 The client's operation is _modal_. When you first start the client, you will be
 in _insert_ mode (indicated by `Ins` in the lower-left-hand corner). In this
 mode, you can type text, which will be sent to the server when you hit `Enter`.
-The following keybindings are available:
 
-- `Backspace`, `Delete`, `Home`, `End`, and `Left`/`Right` (arrow keys) act as
-  you'd expect
-
-- `alt-Backspace` and `alt-Delete` will delete an entire word
-
-- `alt-Left` and `alt-Right` will move the cursor position by one word
-
-Hitting escape (or backspace when the input line is empty) will put you in
-_command_ mode (indicated by `Com` in the lower-left-hand corner), where you
-will eventually be able to control more aspects of the client. Right now,
+Pressing `Esc` will put you in _command_ mode (indicated by `Cmd` in the
+lower-left-hand corner). In this mode, you can enter either commands to the
+client or and vi\
+following keybindings are available:
 
 - `q` will quit the client.
 
@@ -80,6 +72,14 @@ will eventually be able to control more aspects of the client. Right now,
 - The up/down arrow keys (or K/J) will scroll the chat text up/down one line.
 
 - `alt-Up/Dn/PgUp/PgDn` will scroll the roster window.
+
+- `h/l` will scroll the chat text left/right.
+
+- `w/b` will scroll the chat text forward/backward one word.
+
+- `D` will put you in _delete_ mode, in which you can delete characters from the
+  current line using common vi keybindings. ex: `dw` will delete the word under
+  the cursor.
 
 You can also use the following commands:
 

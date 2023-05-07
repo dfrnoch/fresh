@@ -141,9 +141,7 @@ pub fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Re
   Ok(should_refresh)
 }
 
-/** When the mode line (in the lower-left-hand corner) should change,
-this updates it.
-*/
+/// Write the mode line to the screen.
 pub fn write_mode_line(scrn: &mut Screen, gv: &Globals) {
   let mut mode_line = Line::default();
   let mch: &str = match gv.mode {
