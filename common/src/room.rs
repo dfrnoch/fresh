@@ -134,16 +134,10 @@ impl Room {
   pub fn is_banned(&self, uid: &u64) -> bool {
     self.bans.contains(uid)
   }
+
   /** Return whether the `User` with the given ID is "invited" (see
   `.invite(...)`, above). */
   pub fn is_invited(&self, uid: &u64) -> bool {
     self.invites.contains(uid)
-  }
-}
-
-#[cfg(debug)]
-impl Drop for Room {
-  fn drop(&mut self) {
-    println!("Room {} ({}) dropping.", self.idn, &(self.name));
   }
 }

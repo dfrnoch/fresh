@@ -12,7 +12,7 @@ const ADDR: &str = "127.0.0.1:51516"; // server address
 const SERVER_LOG: &str = "freshd.log"; // server log file
 const NAME: &str = "fresh user"; // client user name
 const LOBBY_NAME: &str = "Lobby"; // server landing room name
-const WELCOME: &str = "Welcome to a fresh server."; // server welcome message
+const WELCOME: &str = "Welcome to the server."; // server welcome message
 const SERVER_TICK: u64 = 500; // server, min time through main loop
 const BYTE_LIMIT: usize = 512; // server user rate limiting byte quota
 const BYTE_TICK: usize = 6; // server byte quota dissipation per tick
@@ -68,9 +68,6 @@ struct ServerConfigFile {
   bytes_per_tick: Option<usize>,
 }
 
-/** The `ServerConfig` struct holds data read (and interpreted) from a
-server configuration file as public members.
-*/
 #[derive(Debug)]
 pub struct ServerConfig {
   pub address: String,
@@ -121,7 +118,7 @@ impl ServerConfig {
       Some(4) => LevelFilter::Debug,
       Some(5) => LevelFilter::Trace,
       Some(_) => {
-        println!("Log levels higher than 5 not supported; setting to 5.");
+        println!("Invalid log level in config file.");
         LevelFilter::Trace
       }
     };
@@ -227,9 +224,6 @@ impl ClientConfig {
     Ok(cc)
   }
 
-  /** Generate a default config file in the default location, and return
-  that location as a string (so it can be displayed to the user).
-  */
   pub fn generate() -> Result<String, String> {
     let cfg = ClientConfigFile {
       address: Some(String::from(ADDR)),

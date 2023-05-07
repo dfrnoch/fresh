@@ -3,62 +3,16 @@ use crossterm::{
   style::{self, Stylize},
   terminal, QueueableCommand,
 };
-use lazy_static::lazy_static;
 use log::trace;
 use std::io::{Stdout, Write};
 
 use common::line::*;
 
+use crate::util::styles::*;
+
 const SPACE: char = ' ';
 const VBAR: char = '│';
 const HBAR: char = '—';
-
-lazy_static! {
-  static ref DEFAULT_DIM: Style = Style::new(Some(style::Color::AnsiValue(239)), None, None);
-  static ref DEFAULT_DIM_BOLD: Style = Style::new(
-    Some(style::Color::AnsiValue(239)),
-    None,
-    Some(&[style::Attribute::Bold])
-  );
-  static ref DEFAULT_BOLD: Style = Style::new(None, None, Some(&[style::Attribute::Bold]));
-  static ref DEFAULT_HIGHLIGHT: Style = Style::new(Some(style::Color::White), None, None);
-  static ref DEFAULT_HIGHLIGHT_BOLD: Style = Style::new(
-    Some(style::Color::White),
-    None,
-    Some(&[style::Attribute::Bold])
-  );
-  static ref DEFAULT_REVERSE: Style = Style::new(None, None, Some(&[style::Attribute::Reverse]));
-  static ref VBARSTR: String = {
-    let mut s = String::default();
-    s.push(VBAR);
-    s
-  };
-  static ref RESET_ALL: Style = Style::new(
-    Some(style::Color::Reset),
-    Some(style::Color::Reset),
-    Some(&[style::Attribute::Reset])
-  );
-}
-
-pub struct Styles {
-  pub dim: Style,
-  pub dim_bold: Style,
-  pub bold: Style,
-  pub high: Style,
-  pub high_bold: Style,
-}
-
-impl Default for Styles {
-  fn default() -> Self {
-    Styles {
-      dim: DEFAULT_DIM.clone(),
-      dim_bold: DEFAULT_DIM_BOLD.clone(),
-      bold: DEFAULT_BOLD.clone(),
-      high: DEFAULT_HIGHLIGHT.clone(),
-      high_bold: DEFAULT_HIGHLIGHT_BOLD.clone(),
-    }
-  }
-}
 
 struct Bits {
   stat_begin: String,
@@ -69,13 +23,13 @@ struct Bits {
 }
 
 impl Bits {
-  fn new(sty: &Styles, width: u16) -> Bits {
+  fn new(width: u16) -> Bits {
     let mut start = Line::default();
     let mut end = Line::default();
-    start.pushf(VBARSTR.as_str(), &sty.dim);
+    start.pushf(String::from(VBAR), &DIM);
     start.push(" ");
     end.push(" ");
-    end.pushf(VBARSTR.as_str(), &sty.dim);
+    end.pushf(String::from(VBAR), &DIM);
 
     let mut hline = Line::default();
     {
@@ -83,7 +37,7 @@ impl Bits {
       for _ in 0..width {
         s.push(HBAR);
       }
-      hline.pushf(&s, &sty.dim);
+      hline.pushf(&s, &DIM);
     }
 
     let start_len = start.len();
@@ -99,9 +53,6 @@ impl Bits {
   }
 }
 
-/** The `Screen` represents all the state required to display the `fresh`
-client UI to the user.
-*/
 pub struct Screen {
   lines: Vec<Line>,
   input: Vec<char>,
@@ -111,13 +62,10 @@ pub struct Screen {
   stat_ul: Line,
   stat_ur: Line,
   stat_ll: Line,
-  #[allow(dead_code)]
-  stat_lr: Line,
   lines_dirty: bool,
   input_dirty: bool,
   roster_dirty: bool,
   stat_dirty: bool,
-  styles: Styles,
   bits: Bits,
 
   lines_scroll: u16,
@@ -134,8 +82,7 @@ impl Screen {
     term.queue(terminal::SetTitle("Fresh Client"))?;
     term.flush()?;
 
-    let stylez = Styles::default();
-    let bitz = Bits::new(&stylez, x);
+    let bitz = Bits::new(x);
 
     Ok(Screen {
       lines: Vec::new(),
@@ -146,7 +93,6 @@ impl Screen {
       stat_ul: Line::default(),
       stat_ur: Line::default(),
       stat_ll: Line::default(),
-      stat_lr: Line::default(),
       lines_dirty: true,
       input_dirty: true,
       roster_dirty: true,
@@ -155,17 +101,8 @@ impl Screen {
       roster_scroll: 0,
       last_x_size: x,
       last_y_size: y,
-      styles: stylez,
       bits: bitz,
     })
-  }
-
-  /** Return a reference to the `Styles` struct that contains the styles
-  used by this `Screen`. These should be used in calls to
-  `ctline::Line::pushf()`.
-  */
-  pub fn styles(&self) -> &Styles {
-    &(self.styles)
   }
 
   /** Return the height of the main scrollback window. */
@@ -360,7 +297,7 @@ impl Screen {
         s.push(HBAR);
       }
       let mut hl = Line::default();
-      hl.pushf(&s, &self.styles.dim);
+      hl.pushf(&s, &DIM);
       self.bits.full_hline = hl.first_n_chars(cols as usize).to_string();
     }
     if (cols != self.last_x_size) || (rows != self.last_y_size) {
@@ -443,7 +380,7 @@ impl Screen {
         s.push(SPACE);
       }
       let mut l = Line::default();
-      l.pushf(VBARSTR.as_str(), &self.styles.dim);
+      l.pushf(String::from(VBAR), &DIM);
       l.push(&s);
       l.first_n_chars(rrw).to_string()
     };

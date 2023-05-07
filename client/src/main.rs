@@ -1,4 +1,5 @@
 mod screen;
+mod util;
 
 use clap::Parser;
 use crossterm::{event, event::Event, event::KeyCode};
@@ -7,6 +8,7 @@ use log::{debug, error, trace};
 use std::io::stdout;
 use std::net::TcpStream;
 use std::time::{Duration, Instant};
+use util::styles::*;
 
 use crate::screen::Screen;
 use common::config::ClientConfig;
@@ -250,7 +252,7 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
             let mut sl = Line::default();
             sl.pushf(
               "# You must specify a recipient for a private message.",
-              &scrn.styles().dim,
+              &DIM,
             );
             scrn.push_line(sl);
           }
@@ -307,7 +309,7 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
         "op" => match split_command_toks(&cmd_toks, 2) {
           Err(_) => {
             let mut sl = Line::default();
-            sl.pushf(OP_ERROR, &scrn.styles().dim);
+            sl.pushf(OP_ERROR, &DIM);
             scrn.push_line(sl);
           }
           Ok((cmds, arg)) => {
@@ -319,7 +321,7 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
               "give" => Some(Sndr::Op(SndOp::Give(&arg))),
               _ => {
                 let mut sl = Line::default();
-                sl.pushf(OP_ERROR, &scrn.styles().dim);
+                sl.pushf(OP_ERROR, &DIM);
                 scrn.push_line(sl);
                 None
               }
@@ -332,8 +334,8 @@ fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
 
         x => {
           let mut sl = Line::default();
-          sl.pushf("# Unknown command ", &scrn.styles().dim);
-          sl.pushf(x, &scrn.styles().dim_bold);
+          sl.pushf("# Unknown command ", &DIM);
+          sl.pushf(x, &DIM_BOLD);
           scrn.push_line(sl);
         }
       }
@@ -482,7 +484,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
     Rcvr::Text { who, lines } => {
       for lin in &lines {
         let mut sl = Line::default();
-        sl.pushf(&who, &scrn.styles().high);
+        sl.pushf(&who, &HIGHLIGHT);
         sl.push(": ");
         sl.push(lin);
         scrn.push_line(sl);
@@ -492,7 +494,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
     Rcvr::Priv { who, text } => {
       let mut sl = Line::default();
       sl.push("$ ");
-      sl.pushf(&who, &scrn.styles().dim);
+      sl.pushf(&who, &DIM);
       sl.push(": ");
       sl.push(&text);
       scrn.push_line(sl);
@@ -512,8 +514,8 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
 
     Rcvr::Err(s) => {
       let mut sl = Line::default();
-      sl.pushf("# ", &scrn.styles().dim);
-      sl.pushf(&s, &scrn.styles().dim);
+      sl.pushf("# ", &DIM);
+      sl.pushf(&s, &DIM);
       scrn.push_line(sl);
     }
 
@@ -532,19 +534,19 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         let mut sl = Line::default();
         sl.push("* ");
         if name.as_str() == gv.uname.as_str() {
-          sl.pushf("You", &scrn.styles().bold);
+          sl.pushf("You", &BOLD);
           sl.push(" join ");
 
           /* Set room name in upper-right status line. */
           gv.rname = room.to_string();
           let mut room_line = Line::default();
-          room_line.pushf(&gv.rname, &scrn.styles().high);
+          room_line.pushf(&gv.rname, &HIGHLIGHT);
           scrn.set_stat_ur(room_line);
         } else {
-          sl.pushf(name, &scrn.styles().high);
+          sl.pushf(name, &HIGHLIGHT);
           sl.push(" joins ");
         }
-        sl.pushf(room, &scrn.styles().high);
+        sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
         gv.enqueue_bytes(&ROSTER_REQUEST);
         scrn.push_line(sl);
@@ -559,7 +561,7 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         };
         let mut sl = Line::default();
         sl.push("* ");
-        sl.pushf(name, &scrn.styles().high);
+        sl.pushf(name, &HIGHLIGHT);
         sl.push(" leaves: ");
         sl.push(message);
         gv.enqueue_bytes(&ROSTER_REQUEST);
@@ -575,9 +577,9 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         };
         let mut sl = Line::default();
         sl.push("$ ");
-        sl.pushf("You", &scrn.styles().dim_bold);
-        sl.pushf(" @ ", &scrn.styles().dim);
-        sl.pushf(name, &scrn.styles().high);
+        sl.pushf("You", &DIM_BOLD);
+        sl.pushf(" @ ", &DIM);
+        sl.pushf(name, &HIGHLIGHT);
         sl.push(": ");
         sl.push(text);
         scrn.push_line(sl);
@@ -594,15 +596,15 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         let mut sl = Line::default();
         sl.push("* ");
         if old.as_str() == gv.uname.as_str() {
-          sl.pushf("You", &scrn.styles().bold);
+          sl.pushf("You", &BOLD);
           sl.push(" are now known as ");
           gv.uname.clone_from(new);
           write_mode_line(scrn, gv);
         } else {
-          sl.pushf(old, &scrn.styles().high);
+          sl.pushf(old, &HIGHLIGHT);
           sl.push(" is now known as ");
         }
-        sl.pushf(new, &scrn.styles().high);
+        sl.pushf(new, &HIGHLIGHT);
         sl.push(".");
         scrn.push_line(sl);
         gv.enqueue_bytes(&ROSTER_REQUEST);
@@ -619,13 +621,13 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         let mut sl = Line::default();
         sl.push("* ");
         if name == &gv.uname {
-          sl.pushf("You", &scrn.styles().bold);
+          sl.pushf("You", &BOLD);
           sl.push(" are now the operator of ");
         } else {
-          sl.pushf(name, &scrn.styles().high);
+          sl.pushf(name, &HIGHLIGHT);
           sl.push(" is now the operator of ");
         }
-        sl.pushf(room, &scrn.styles().bold);
+        sl.pushf(room, &BOLD);
         sl.push(".");
         scrn.push_line(sl);
         gv.enqueue_bytes(&ROSTER_REQUEST);
@@ -647,9 +649,9 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         };
         let mut sl = Line::default();
         sl.push("* ");
-        sl.pushf(name, &scrn.styles().high);
+        sl.pushf(name, &HIGHLIGHT);
         sl.push(" has been kicked from ");
-        sl.pushf(room, &scrn.styles().high);
+        sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
         scrn.push_line(sl);
         gv.enqueue_bytes(&ROSTER_REQUEST);
@@ -664,9 +666,9 @@ fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), Strin
         };
         let mut sl = Line::default();
         sl.push("* ");
-        sl.pushf("You", &scrn.styles().bold);
+        sl.pushf("You", &BOLD);
         sl.push(" have been kicked from ");
-        sl.pushf(room, &scrn.styles().high);
+        sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
         scrn.push_line(sl);
       }
@@ -716,11 +718,11 @@ fn write_mode_line(scrn: &mut Screen, gv: &Globals) {
     Mode::Command => "Com",
     Mode::Input => "Ipt",
   };
-  mode_line.pushf(mch, &scrn.styles().high);
-  mode_line.pushf(" | ", &scrn.styles().dim);
-  mode_line.pushf(&(gv.uname), &scrn.styles().high);
+  mode_line.pushf(mch, &HIGHLIGHT);
+  mode_line.pushf(" | ", &DIM);
+  mode_line.pushf(&(gv.uname), &HIGHLIGHT);
   mode_line.push(" @ ");
-  mode_line.pushf(&(gv.local_addr), &scrn.styles().high);
+  mode_line.pushf(&(gv.local_addr), &HIGHLIGHT);
   scrn.set_stat_ll(mode_line);
 }
 
@@ -781,11 +783,11 @@ fn main() {
     };
 
     let mut addr_line = Line::default();
-    addr_line.pushf(&gv.server_addr, &scrn.styles().high);
+    addr_line.pushf(&gv.server_addr, &HIGHLIGHT);
     scrn.set_stat_ul(addr_line);
 
     let mut room_line = Line::default();
-    room_line.pushf(&gv.rname, &scrn.styles().high);
+    room_line.pushf(&gv.rname, &HIGHLIGHT);
     scrn.set_stat_ur(room_line);
     write_mode_line(&mut scrn, &gv);
 
