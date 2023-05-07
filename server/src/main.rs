@@ -1,6 +1,6 @@
+mod connection;
 mod message;
 mod processing;
-mod connection;
 
 use crate::connection::listen;
 use crate::processing::process_room;
@@ -13,9 +13,7 @@ use simplelog::WriteLogger;
 use std::collections::HashMap;
 use std::sync::mpsc;
 use std::thread;
-use std::time::{Instant};
-
-
+use std::time::Instant;
 
 /// Unique user name generator.
 fn gen_name(init_count: u64, map: &HashMap<String, u64>) -> String {
