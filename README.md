@@ -1,12 +1,12 @@
 # Fresh
 
-a chat server/client made in Rust
+[![DeepSource](https://app.deepsource.com/gh/lnxcz/fresh.svg/?label=active+issues&show_trend=true&token=CMLlIbDLbu5SNKhIR0MXQspB)](https://app.deepsource.com/gh/lnxcz/fresh/?ref=repository-badge)
 
 ### Overview
 
-The `fresh` project comprises a minimal chat server and client implemented in
-Rust. The chat server exposes a simple JSON-based API, intended to facilitate
-the development of feature-rich chat clients in any programming language.
+`Fresh` is a simple & customizable chat server and client. It is designed to be
+easy to use and easy to extend. Both the server and client are written in Rust,
+and the client uses the crossterm library for its UI.
 
 ### Installation
 

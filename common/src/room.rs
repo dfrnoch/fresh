@@ -90,7 +90,7 @@ impl Room {
     }
   }
 
-  /** Add the given user ID to the list of `User`s "in" the `Room`. */
+  /// Add the given user ID to the list of `User`s "in" the `Room`.
   pub fn join(&mut self, uid: u64) {
     self.users.push(uid);
   }
