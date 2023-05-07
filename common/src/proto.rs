@@ -144,14 +144,14 @@ pub enum Sndr<'a> {
   Misc {
       what: "roster",
       data: &["user1", "user2", "user7"], # ...
-      alt:  "Gay Space Communism roster: user1 (operator) user2, user7...",
+      alt:  "Room Some Room: user1 (operator) user2, user7...",
   };
 
   // when a user joins a `Room`
   Misc {
       what: "join",
-      data: &["Some Dude", "Gay Space Communism"],
-      alt:  "Some Dude joins Gay Space Communism.",
+      data: &["Some Dude", "Some Room"],
+      alt:  "Some Dude joins Some Room.",
   };
 
   // when a user logs out or otherwise leaves a `Room`
@@ -164,15 +164,15 @@ pub enum Sndr<'a> {
   // when a user is kicked from the current `Room`
   Misc {
       what: "kick_other",
-      data: &["Annoying Guy", "Gay Space Communism"],
-      alt:  "Annoying Guy has been kicked from Gay Space Communism.",
+      data: &["Annoying Guy", "Some Room"],
+      alt:  "Annoying Guy has been kicked from Some Room.",
   };
 
   // when _you_ are kicked from the current `Room`
   Misc {
       what: "kick_you",
-      data: &["Gay Space Communism"],
-      alt:  "You have been kicked from Gay Space Communism.",
+      data: &["Some Room"],
+      alt:  "You have been kicked from Some Room.",
   };
 
   // when a user changes his or her name
@@ -185,8 +185,8 @@ pub enum Sndr<'a> {
   // when the `Room` operator changes
   Misc {
       what: "new_op",
-      data: &["Some Other Gal", "Gay Space Communism"],
-      alt:  "Some Other Gal is now the operator of Gay Space Communism.",
+      data: &["Some Other Gal", "Some Room"],
+      alt:  "Some Other Gal is now the operator of Some Room.",
   };
 
   // in response to a `Query { what: "addr", ... }`
@@ -206,7 +206,7 @@ pub enum Sndr<'a> {
   // in response to a `Query { what: "rooms", arg: "gay", }`
   Misc {
       what: "rooms",
-      data: &["Gay Space Communism", "Gay Hamster Fan Club",
+      data: &["Some Room", "Gay Hamster Fan Club",
               "Gay Rights Advocacy", "Gaystation 3"],
       alt:  "Matching Rooms: gayspacecommunism, gayhamsterfanclub, gayrightsadvocacy, gaystation3",
   };

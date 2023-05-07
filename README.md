@@ -40,7 +40,7 @@ config options are
   setting it to 0 will make the client unusable.
 
 - `roster_width`: This specifies the width (in characters) of the panel that
-  displays the current room's roster. As the server limits usernames to 24
+  displays the current room's users. As the server limits usernames to 24
   characters, this setting is set to a reasonable default value.
 
 - `cmd_char`: This is the character used to indicate that a line of input should

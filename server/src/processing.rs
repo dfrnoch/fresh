@@ -560,6 +560,7 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
         };
         altstr = format!("{} roster: {} (operator) ", r.get_name(), op_name);
         append_comma_delimited_list(&mut altstr, &names_list);
+
         names_list.push(op_name);
       }
 

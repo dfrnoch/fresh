@@ -56,8 +56,8 @@ fn main() {
 
   loop {
     now = Instant::now();
-    let mut roomz: Vec<u64> = room_map.keys().copied().collect();
-    for rid in roomz.drain(..) {
+    let mut rooms: Vec<u64> = room_map.keys().copied().collect();
+    for rid in rooms.drain(..) {
       let rnum = room_map.len();
       match process_room(
         rid,
