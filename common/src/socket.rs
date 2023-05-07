@@ -19,32 +19,30 @@ static ERRS: &[&str] = &[
   "Error retrieving the remote address",            // 7
 ];
 
-/// The `SockError` wraps or signals errors on the `Sock`'s underlying `TcpStream`.
 #[derive(Debug)]
-pub struct SockError {
+pub struct SocketError {
   msg: String,
 }
 
-impl SockError {
-  /// Instantiate a new `SockError` from a `String` message.
-  pub fn string(message: String) -> SockError {
-    SockError { msg: message }
+impl SocketError {
+  pub fn string(message: String) -> SocketError {
+    SocketError { msg: message }
   }
 
   /// Wrap an underlying error (probably a `std::io::Result` from the
   /// underlying `TcpStream` with a message from `ERRS`, above.
-  fn from_err(errno: usize, e: &dyn Error) -> SockError {
-    SockError::string(format!("{}: {}", ERRS[errno], e))
+  fn from_err(errno: usize, e: &dyn Error) -> SocketError {
+    SocketError::string(format!("{}: {}", ERRS[errno], e))
   }
 }
 
-impl std::fmt::Display for SockError {
+impl std::fmt::Display for SocketError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "SockError: {}", &(self.msg))
+    write!(f, "SocketError: {}", &(self.msg))
   }
 }
 
-impl Error for SockError {}
+impl Error for SocketError {}
 
 /* This is a hacky way of turning certain helpful-to-a-human but
 not-so-helpful-to-a-machine error messages returned by `serde_json`'s
@@ -86,38 +84,25 @@ fn get_actual_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'stati
   }
 }
 
-/**
-The `sock::Sock` wraps a `std::net::TcpStream` and exchanges
-`proto3::{Sndr, Rcvr}` objects over it.
-
-It's default mode is entirely non-blocking, and suitable for single-threaded
-operation. Chunks of encoded JSON can be queued into its send buffer, and
-attempts to decode incoming chunks from its receive buffer can be made at
-any time. Nonblocking attempts can be made to send/receive bytes down/up the
-underlying stream to/from those respective buffers can be made at any time.
-
-If any of the operations returns a `SockError`, it probably means the
-connection should be shut down.
-*/
-pub struct Sock {
-  sock: TcpStream,
+pub struct Socket {
+  stream: TcpStream,
   read_buff: Vec<u8>,
   current: Vec<u8>,
   send_buff: Vec<u8>,
 }
 
-impl Sock {
-  pub fn new(stream: TcpStream) -> Result<Sock, SockError> {
+impl Socket {
+  pub fn new(stream: TcpStream) -> Result<Socket, SocketError> {
     if let Err(e) = stream.set_nodelay(true) {
-      return Err(SockError::from_err(0, &e));
+      return Err(SocketError::from_err(0, &e));
     }
     if let Err(e) = stream.set_nonblocking(true) {
-      return Err(SockError::from_err(1, &e));
+      return Err(SocketError::from_err(1, &e));
     }
     let mut new_buff: Vec<u8> = vec![0; DEFAULT_BUFFER_SIZE];
     new_buff.resize(DEFAULT_BUFFER_SIZE, 0u8);
-    let s = Sock {
-      sock: stream,
+    let s = Socket {
+      stream,
       read_buff: new_buff,
       current: Vec::<u8>::new(),
       send_buff: Vec::<u8>::new(),
@@ -125,9 +110,9 @@ impl Sock {
     Ok(s)
   }
 
-  pub fn shutdown(&mut self) -> Result<(), SockError> {
-    match self.sock.shutdown(Shutdown::Both) {
-      Err(e) => Err(SockError::from_err(2, &e)),
+  pub fn shutdown(&mut self) -> Result<(), SocketError> {
+    match self.stream.shutdown(Shutdown::Both) {
+      Err(e) => Err(SocketError::from_err(2, &e)),
       Ok(()) => Ok(()),
     }
   }
@@ -148,18 +133,18 @@ impl Sock {
 
   /** Attempts to read data from the underlying stream, copying it into
   its internal buffer for later attempted decoding. If this returns the
-  `Err(SockError)` variant, it should probably be `.shutdown()`. Otherwise,
+  `Err(SocketError)` variant, it should probably be `.shutdown()`. Otherwise,
   returns the number of bytes read.
 
   A return value of `Ok(0)` either means there wasn't any data to read,
   or something nonfatal interrupted the attempt to read.
   */
-  pub fn suck(&mut self) -> Result<usize, SockError> {
-    match self.sock.read(&mut self.read_buff) {
+  pub fn suck(&mut self) -> Result<usize, SocketError> {
+    match self.stream.read(&mut self.read_buff) {
       Err(e) => match e.kind() {
         std::io::ErrorKind::WouldBlock => Ok(0),
         std::io::ErrorKind::Interrupted => Ok(0),
-        _ => Err(SockError::from_err(3, &e)),
+        _ => Err(SocketError::from_err(3, &e)),
       },
       Ok(n) => {
         if n > 0 {
@@ -170,7 +155,7 @@ impl Sock {
     }
   }
 
-  pub fn try_get(&mut self) -> Result<Option<Rcvr>, SockError> {
+  pub fn try_get(&mut self) -> Result<Option<Rcvr>, SocketError> {
     let offs;
     let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current);
     match maybe_msg {
@@ -186,7 +171,7 @@ impl Sock {
           offs = get_actual_offset(&self.current, &e).unwrap();
         }
         _ => {
-          return Err(SockError::from_err(4, &e));
+          return Err(SocketError::from_err(4, &e));
         }
       },
     }
@@ -198,7 +183,7 @@ impl Sock {
         self.current = temp;
         Ok(Some(m))
       }
-      Err(e) => Err(SockError::from_err(4, &e)),
+      Err(e) => Err(SocketError::from_err(4, &e)),
     }
   }
 
@@ -217,21 +202,21 @@ impl Sock {
   that can return an error, this is probably fatal and the `Sock` should
   be `.shutdown()`.
   */
-  pub fn blow(&mut self) -> Result<usize, SockError> {
-    let res = self.sock.write(&self.send_buff);
+  pub fn blow(&mut self) -> Result<usize, SocketError> {
+    let res = self.stream.write(&self.send_buff);
 
     match res {
       Err(e) => {
         if e.kind() == std::io::ErrorKind::Interrupted {
           Ok(self.send_buff.len())
         } else {
-          Err(SockError::from_err(5, &e))
+          Err(SocketError::from_err(5, &e))
         }
       }
       Ok(n) => {
         if n == self.send_buff.len() {
-          if let Err(e) = self.sock.flush() {
-            Err(SockError::from_err(6, &e))
+          if let Err(e) = self.stream.flush() {
+            Err(SocketError::from_err(6, &e))
           } else {
             self.send_buff.clear();
             Ok(0)
@@ -248,7 +233,11 @@ impl Sock {
   /** Queues up the supplied `data` at the end of  the send buffer, then
   blockingly attemps to `.blow()` every `tick` until the send buffer is empty.
   */
-  pub fn blocking_send(&mut self, data: &[u8], tick: std::time::Duration) -> Result<(), SockError> {
+  pub fn blocking_send(
+    &mut self,
+    data: &[u8],
+    tick: std::time::Duration,
+  ) -> Result<(), SocketError> {
     self.enqueue(data);
     loop {
       if 0 == self.blow()? {
@@ -262,6 +251,7 @@ impl Sock {
   pub fn send_buff_size(&self) -> usize {
     self.send_buff.len()
   }
+
   /** Returns how many bytes are sitting in the receive buffer waiting
   to get decoded. */
   pub fn recv_buff_size(&self) -> usize {
@@ -269,10 +259,10 @@ impl Sock {
   }
 
   /// Returns the address of the remote endpoint of the underlying stream.
-  pub fn get_addr(&self) -> Result<String, SockError> {
-    match self.sock.peer_addr() {
+  pub fn get_addr(&self) -> Result<String, SocketError> {
+    match self.stream.peer_addr() {
       Ok(a) => Ok(a.to_string()),
-      Err(e) => Err(SockError::from_err(7, &e)),
+      Err(e) => Err(SocketError::from_err(7, &e)),
     }
   }
 }

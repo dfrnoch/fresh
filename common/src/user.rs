@@ -1,7 +1,7 @@
 use unicode_normalization::UnicodeNormalization;
 
 use super::proto::{End, Env, Rcvr, Sndr};
-use super::socket::{Sock, SockError};
+use super::socket::{Socket, SocketError};
 use std::fmt::Display;
 use std::time::{Duration, Instant};
 
@@ -19,13 +19,13 @@ impl UserError {
     }
   }
 
-  fn from_socket(err: &SockError) -> UserError {
+  fn from_socket(err: &SocketError) -> UserError {
     UserError {
       msg: format!("Underlying socket error: {}", err),
     }
   }
 
-  fn from_sockets(err_list: &[SockError]) -> UserError {
+  fn from_sockets(err_list: &[SocketError]) -> UserError {
     let mut message = format!("{} Underlying socket error(s):", err_list.len());
     for err in err_list.iter() {
       let s = format!("\n  * {}", err);
@@ -43,34 +43,30 @@ impl Display for UserError {
 
 impl std::error::Error for UserError {}
 
-/**
-The `User` represents a connected client, wrapping the underlying socket and
-storing some state.
-*/
 pub struct User {
-  thesock: Sock,
+  socket: Socket,
   name: String,
   idn: u64,
   idstr: String,
   bytes_sucked: usize,
   quota_bytes: usize,
   last_data_time: Instant,
-  errs: Vec<SockError>,
+  errs: Vec<SocketError>,
   blocks: Vec<u64>,
 }
 
 impl User {
-  pub fn new(new_sock: Sock, new_idn: u64) -> User {
+  pub fn new(new_socket: Socket, new_idn: u64) -> User {
     let new_name = format!("user{}", &new_idn);
     User {
-      thesock: new_sock,
+      socket: new_socket,
       idn: new_idn,
       idstr: collapse(&new_name),
       name: new_name,
       bytes_sucked: 0,
       quota_bytes: 0,
       last_data_time: Instant::now(),
-      errs: Vec::<SockError>::new(),
+      errs: Vec::<SocketError>::new(),
       blocks: Vec::<u64>::new(),
     }
   }
@@ -85,7 +81,7 @@ impl User {
     &(self.idstr)
   }
   pub fn get_addr(&mut self) -> Option<String> {
-    match self.thesock.get_addr() {
+    match self.socket.get_addr() {
       Ok(a) => Some(a),
       Err(e) => {
         self.errs.push(e);
@@ -147,8 +143,8 @@ impl User {
   pub fn logout(&mut self, logout_message: &str) {
     let msg = Sndr::Logout(logout_message);
     self.deliver_msg(&msg);
-    let _ = self.thesock.blow();
-    let _ = self.thesock.shutdown();
+    let _ = self.socket.blow();
+    let _ = self.socket.shutdown();
   }
 
   /** Add the ID of a user to the list of users this user has blocked.
@@ -189,11 +185,11 @@ impl User {
       End::User(id) => match &(self.blocks).binary_search(&id) {
         Ok(_) => { /* User is blocked; do not deliver. */ }
         Err(_) => {
-          self.thesock.enqueue(env.bytes());
+          self.socket.enqueue(env.bytes());
         }
       },
       _ => {
-        self.thesock.enqueue(env.bytes());
+        self.socket.enqueue(env.bytes());
       }
     }
   }
@@ -202,15 +198,15 @@ impl User {
   origin.
   */
   pub fn deliver_msg(&mut self, msg: &Sndr) {
-    self.thesock.enqueue(&(msg.bytes()));
+    self.socket.enqueue(&(msg.bytes()));
   }
 
   /** Attempt to write bytes from the outgoing buffer to the underlying
   socket. Any errors will be added to an internal `Vec` and not returned.
   */
   pub fn nudge(&mut self) {
-    if self.thesock.send_buff_size() > 0 {
-      if let Err(e) = self.thesock.blow() {
+    if self.socket.send_buff_size() > 0 {
+      if let Err(e) = self.socket.blow() {
         self.errs.push(e);
       }
     }
@@ -227,7 +223,7 @@ impl User {
     self.deliver_msg(msg);
     let start_t = Instant::now();
     loop {
-      match self.thesock.blow() {
+      match self.socket.blow() {
         Err(e) => {
           let err = UserError::from_socket(&e);
           self.errs.push(e);
@@ -251,7 +247,7 @@ impl User {
   Any errors will be added to an internal `Vec` and not returned.
   */
   pub fn try_get(&mut self) -> Option<Rcvr> {
-    match self.thesock.suck() {
+    match self.socket.suck() {
       Err(e) => {
         self.errs.push(e);
         return None;
@@ -261,19 +257,18 @@ impl User {
       }
     }
 
-    let n_buff = self.thesock.recv_buff_size();
+    let n_buff = self.socket.recv_buff_size();
     if n_buff > 0 {
-      match self.thesock.try_get() {
+      match self.socket.try_get() {
         Err(e) => {
           self.errs.push(e);
           None
         }
         Ok(msg_opt) => {
           self.last_data_time = Instant::now();
-          // If it's a noisy message, increment byte quota.
           if let Some(ref m) = msg_opt {
             if m.counts() {
-              self.quota_bytes += n_buff - self.thesock.recv_buff_size();
+              self.quota_bytes += n_buff - self.socket.recv_buff_size();
             }
           }
           msg_opt
@@ -291,7 +286,7 @@ impl User {
   or if `limit` goes by without successfully decoding a `Msg`.
   */
   pub fn blocking_get(&mut self, limit: Duration) -> Result<Rcvr, UserError> {
-    match self.thesock.try_get() {
+    match self.socket.try_get() {
       Err(e) => {
         let err = UserError::from_socket(&e);
         self.errs.push(e);
@@ -306,7 +301,7 @@ impl User {
 
     let start_t = Instant::now();
     loop {
-      match self.thesock.suck() {
+      match self.socket.suck() {
         Err(e) => {
           let err = UserError::from_socket(&e);
           self.errs.push(e);
@@ -314,7 +309,7 @@ impl User {
         }
         Ok(n) => {
           if n > 0 {
-            match self.thesock.try_get() {
+            match self.socket.try_get() {
               Err(e) => {
                 let err = UserError::from_socket(&e);
                 self.errs.push(e);

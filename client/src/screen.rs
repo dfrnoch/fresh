@@ -82,8 +82,6 @@ impl Screen {
     term.queue(terminal::SetTitle("Fresh Client"))?;
     term.flush()?;
 
-    let bitz = Bits::new(x);
-
     Ok(Screen {
       lines: Vec::new(),
       input: Vec::new(),
@@ -101,7 +99,7 @@ impl Screen {
       roster_scroll: 0,
       last_x_size: x,
       last_y_size: y,
-      bits: bitz,
+      bits: Bits::new(x),
     })
   }
 

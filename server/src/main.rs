@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use common::config::ServerConfig;
 use common::proto::*;
 use common::room::Room;
-use common::socket::Sock;
+use common::socket::Socket;
 use common::user::*;
 
 const ENVS_SIZE: usize = 8;
@@ -166,7 +166,7 @@ fn listen(addr: String, tx: mpsc::Sender<User>) {
           "listen(): Accepted connection from {:?}",
           stream.peer_addr().unwrap()
         );
-        let new_sock: Sock = match Sock::new(stream) {
+        let new_sock = match Socket::new(stream) {
           Err(e) => {
             debug!("listen(): Error setting up new Sock: {}", &e);
             continue;
@@ -1219,10 +1219,7 @@ fn process_room(
       Rcvr::Logout(salutation) => do_logout(&mut ctxt, salutation),
       Rcvr::Query { what, arg } => do_query(&mut ctxt, what, arg),
       Rcvr::Op(op) => do_op(&mut ctxt, op),
-      _ => {
-        /* Other patterns require no response. */
-        Ok(Envs::new0())
-      }
+      _ => Ok(Envs::new0()),
     };
 
     match pres {
@@ -1306,9 +1303,7 @@ fn process_room(
   Ok(())
 }
 
-/** When a user joins with a name that `collapse()`s to a user who is
-already joined, this generates them a generic (but unique) name.
-*/
+/// Unique user name generator.
 fn gen_name(init_count: u64, map: &HashMap<String, u64>) -> String {
   let mut n = init_count;
   loop {

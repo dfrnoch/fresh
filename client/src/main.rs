@@ -14,7 +14,7 @@ use crate::screen::Screen;
 use common::config::ClientConfig;
 use common::line::Line;
 use common::proto::{Rcvr, SndOp, Sndr};
-use common::socket::Sock;
+use common::socket::Socket;
 
 lazy_static! {
   static ref PING: Vec<u8> = Sndr::Ping.bytes();
@@ -43,7 +43,7 @@ struct Globals {
   messages: Vec<String>,
   local_addr: String,
   server_addr: String,
-  socket: Sock,
+  socket: Socket,
   cmd: char,
   run: bool,
 }
@@ -117,12 +117,12 @@ fn configure() -> ClientConfig {
 /** Attempt to connect to the `freshd` server specified either on the
 command line or in the config file.
 */
-fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
-  let mut thesock: Sock = match TcpStream::connect(&cfg.address) {
+fn connect(cfg: &ClientConfig) -> Result<Socket, String> {
+  let mut socket: Socket = match TcpStream::connect(&cfg.address) {
     Err(e) => {
       return Err(format!("Error connecting to {}: {}", cfg.address, e));
     }
-    Ok(s) => match Sock::new(s) {
+    Ok(s) => match Socket::new(s) {
       Err(e) => {
         return Err(format!("Error setting up socket: {}", e));
       }
@@ -130,10 +130,10 @@ fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
     },
   };
   let b = Sndr::Name(&cfg.name).bytes();
-  let res = thesock.blocking_send(&b, cfg.tick);
+  let res = socket.blocking_send(&b, cfg.tick);
 
   if let Err(e) = res {
-    match thesock.shutdown() {
+    match socket.shutdown() {
       Err(ee) => {
         return Err(format!(
           "Error in initial protocol: {}; error during shutdown: {}",
@@ -146,7 +146,7 @@ fn connect(cfg: &ClientConfig) -> Result<Sock, String> {
     }
   }
 
-  Ok(thesock)
+  Ok(socket)
 }
 
 /** Divide &str s into alternating chunks of whitespace and non-whitespace. */
@@ -740,7 +740,7 @@ fn main() {
 
   debug!("{:?}", &cfg);
   println!("Attempting to connect to {}...", &cfg.address);
-  let mut sck: Sock = match connect(&cfg) {
+  let mut sck: Socket = match connect(&cfg) {
     Err(e) => {
       println!("{}", e);
       std::process::exit(2);
