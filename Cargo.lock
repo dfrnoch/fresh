@@ -71,12 +71,6 @@ checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
 
 [[package]]
 name = "cfg-if"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
-
-[[package]]
-name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
@@ -133,7 +127,6 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 name = "common"
 version = "0.2.0"
 dependencies = [
- "clap",
  "crossterm",
  "directories",
  "lazy_static",
@@ -141,7 +134,6 @@ dependencies = [
  "serde",
  "serde_json",
  "simplelog",
- "smallvec",
  "toml",
  "unicode-normalization",
 ]
@@ -220,14 +212,9 @@ dependencies = [
  "clap",
  "common",
  "crossterm",
- "directories",
  "lazy_static",
  "log",
- "serde",
- "serde_json",
  "simplelog",
- "smallvec",
- "toml",
 ]
 
 [[package]]
@@ -236,15 +223,9 @@ version = "0.2.0"
 dependencies = [
  "clap",
  "common",
- "crossterm",
- "directories",
- "lazy_static",
  "log",
- "serde",
- "serde_json",
  "simplelog",
  "smallvec",
- "toml",
 ]
 
 [[package]]
@@ -253,7 +234,7 @@ version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c85e1d9ab2eadba7e5040d4e09cbd6d072b76a557ad64e797c2cb9d4da21d7e4"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if",
  "libc",
  "wasi",
 ]
@@ -351,11 +332,11 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.11"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fabed175da42fed1fa0746b0ea71f412aa9d35e76e95e59b192c64b9dc2bf8b"
+checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if",
 ]
 
 [[package]]
@@ -413,7 +394,7 @@ version = "0.9.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9069cbb9f99e3a5083476ccb29ceb1de18b9118cafa53e90c9551235de2b9521"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if",
  "libc",
  "redox_syscall",
  "smallvec",

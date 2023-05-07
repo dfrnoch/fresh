@@ -15,6 +15,4 @@ serde_json = "1.0"
 log = "0.4.11"
 simplelog = "0.12.1"
 crossterm = "0.26.1"
-clap = { version = "4.2.1", features = ["derive"] }
-smallvec = "1.6.1"
 unicode-normalization = "0.1.22"

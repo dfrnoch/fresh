@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use log::{debug, trace, warn};
 use simplelog::WriteLogger;
 use smallvec::SmallVec;
@@ -18,8 +17,6 @@ const ENVS_SIZE: usize = 8;
 const LOGOUTS_SIZE: usize = 8;
 const TEXT_SIZE: usize = 2;
 const ROOM_SIZE: usize = 64;
-
-static BLOCK_TIMEOUT: Duration = Duration::from_millis(5000);
 
 struct Context<'a> {
   rid: u64,
@@ -137,7 +134,7 @@ fn append_comma_delimited_list<T: AsRef<str>>(base: &mut String, v: &[T]) {
 }
 
 fn initial_negotiation(u: &mut User) -> Result<(), String> {
-  match u.blocking_get(BLOCK_TIMEOUT) {
+  match u.blocking_get(Duration::from_secs(5)) {
     Err(e) => {
       let err_str = format!("Error reading initial \"Name\" message: {}", e);
       u.logout(&err_str);
@@ -1068,9 +1065,6 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         in_room = cur_r.get_users().contains(&ouid);
 
         if !in_room {
-          /* This case is easy because we only have to message the
-          banner about his activity.
-          */
           if !cur_r.get_users().contains(&ouid) {
             let env = Env::new(
               End::Server,
@@ -1084,15 +1078,6 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
             return Ok(Envs::new1(env));
           }
         } else {
-          /* This case is tougher because it involves
-            * messaging the kicked user
-            * moving the kicked user
-            * messaging the room
-            * messaging the Lobby that he's joined it
-
-          It requires careful dancing around &mut lifetimes.
-          */
-
           let altstr = format!("You have been kicked from {}.", cur_r.get_name());
           let dat: [&str; 1] = [cur_r.get_name()];
           let to_kicked = Sndr::Misc {
@@ -1279,7 +1264,6 @@ fn process_room(
   }
 
   // Change room operator if current op is no longer in room.
-  // (But obviously not for the lobby.)
 
   if rid != 0 {
     let mr = ctxt.rmap.get_mut(&rid).unwrap();
