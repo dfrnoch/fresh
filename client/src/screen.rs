@@ -176,6 +176,54 @@ impl Screen {
     self.input_dirty = true;
   }
 
+  pub fn input_delete_words(&mut self, words_to_delete: i32) {
+    let uip = self.input_ip as usize;
+    let ilen = self.input.len();
+
+    if (uip == ilen && words_to_delete > 0) || (uip == 0 && words_to_delete < 0) {
+      return;
+    }
+
+    self.input_dirty = true;
+
+    if words_to_delete > 0 {
+      let mut i = uip;
+      while i < ilen && self.input[i].is_whitespace() {
+        i += 1;
+      }
+      if i >= ilen {
+        return;
+      }
+
+      let mut j = i;
+      for _ in 0..words_to_delete {
+        while j < ilen && !self.input[j].is_whitespace() {
+          j += 1;
+        }
+        while j < ilen && self.input[j].is_whitespace() {
+          j += 1;
+        }
+      }
+
+      self.input.drain(i..j);
+    } else {
+      let words_to_delete_abs = words_to_delete.abs();
+      let mut i = uip;
+
+      for _ in 0..words_to_delete_abs {
+        while i > 0 && self.input[i - 1].is_whitespace() {
+          i -= 1;
+        }
+        while i > 0 && !self.input[i - 1].is_whitespace() {
+          i -= 1;
+        }
+      }
+
+      self.input.drain(i..uip);
+      self.input_ip = i as u16;
+    }
+  }
+
   /** Move the input cursor forward (or backward, for negative values)
   `n_chars`, or to the end (or beginning), if the new position would
   be out of range.
@@ -197,54 +245,61 @@ impl Screen {
     self.input_dirty = true;
   }
 
-  /* Move the input cursor forward to the next word-end location. */
-  pub fn input_skip_foreword(&mut self) {
+  pub fn input_skip_words(&mut self, words_to_skip: i32) {
     let uip = self.input_ip as usize;
-    if uip == self.input.len() {
+
+    if uip == self.input.len() && words_to_skip > 0 {
+      return;
+    }
+
+    if uip == 0 && words_to_skip < 0 {
       return;
     }
 
     self.input_dirty = true;
-    let mut in_ws = self.input[uip].is_whitespace();
+    let mut words_skipped = 0;
 
-    for (i, c) in self.input[uip..].iter().enumerate() {
-      if in_ws {
-        if !c.is_whitespace() {
-          in_ws = false;
+    if words_to_skip > 0 {
+      let mut in_ws = self.input[uip].is_whitespace();
+
+      for (i, c) in self.input[uip..].iter().enumerate() {
+        if in_ws {
+          if !c.is_whitespace() {
+            in_ws = false;
+          }
+        } else if c.is_whitespace() {
+          words_skipped += 1;
+          if words_skipped >= words_to_skip {
+            self.input_ip = (uip + i) as u16;
+            return;
+          }
+          in_ws = true;
         }
-      } else if c.is_whitespace() {
-        self.input_ip = (uip + i) as u16;
-        return;
       }
-    }
-    self.input_ip = self.input.len() as u16;
-  }
+      self.input_ip = self.input.len() as u16;
+    } else {
+      let words_to_skip_abs = words_to_skip.abs();
+      let mut in_ws = false;
+      if uip < self.input.len() && self.input[uip - 1].is_whitespace() {
+        in_ws = true;
+      }
 
-  /* Move the input cursor backward to the previous word-beginning
-  location. */
-  pub fn input_skip_backword(&mut self) {
-    let uip = self.input_ip as usize;
-    if uip == 0 {
-      return;
-    }
-
-    self.input_dirty = true;
-    let mut in_ws = false;
-    if uip < self.input.len() && self.input[uip - 1].is_whitespace() {
-      in_ws = true;
-    }
-
-    for (i, c) in self.input[..uip].iter().rev().enumerate() {
-      if in_ws {
-        if !c.is_whitespace() {
-          in_ws = false;
+      for (i, c) in self.input[..uip].iter().rev().enumerate() {
+        if in_ws {
+          if !c.is_whitespace() {
+            in_ws = false;
+          }
+        } else if c.is_whitespace() {
+          words_skipped += 1;
+          if words_skipped >= words_to_skip_abs {
+            self.input_ip = (uip - i) as u16;
+            return;
+          }
+          in_ws = true;
         }
-      } else if c.is_whitespace() {
-        self.input_ip = (uip - i) as u16;
-        return;
       }
+      self.input_ip = 0;
     }
-    self.input_ip = 0;
   }
 
   /** Scroll the main display up (or down, for negative values) `n_chars`,
@@ -452,7 +507,6 @@ impl Screen {
   fn refresh_stat(&mut self, term: &mut Stdout) -> crossterm::Result<()> {
     trace!("Screen::refresh_stat(...) called");
 
-    /* Lower left corner (there is no lower-right as of yet). */
     let stat_pad = 2 + self.bits.stat_begin_chars + self.bits.stat_end_chars;
     let stat_room = (self.last_x_size as usize) - stat_pad;
     let ll_y = self.last_y_size - 2;
@@ -512,9 +566,7 @@ impl Screen {
     term
       .queue(terminal::Clear(terminal::ClearType::All))?
       .queue(cursor::MoveTo(0, 0))?
-      .queue(style::Print(
-        "The terminal window is too small. Please make it larger.",
-      ))?;
+      .queue(style::Print("Terminal window is too small!"))?;
     term.flush()?;
 
     Ok(())

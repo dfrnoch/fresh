@@ -8,7 +8,7 @@ const CLIENT_NAME: &str = "fresh.toml";
 const SERVER_NAME: &str = "freshd.toml";
 
 //  Default values
-const ADDR: &str = "127.0.0.1:51516"; // server address
+const ADDR: &str = "127.0.0.1:1234"; // server address
 const SERVER_LOG: &str = "freshd.log"; // server log file
 const NAME: &str = "fresh user"; // client user name
 const LOBBY_NAME: &str = "Lobby"; // server landing room name

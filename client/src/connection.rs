@@ -1,11 +1,6 @@
+use crate::input::Mode;
 use common::{config::ClientConfig, proto::Sndr, socket::Socket};
 use std::net::TcpStream;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Mode {
-  Command,
-  Input,
-}
 
 pub struct Globals {
   pub uname: String,

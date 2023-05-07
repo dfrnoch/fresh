@@ -5,17 +5,17 @@ mod screen;
 mod util;
 
 use clap::Parser;
-use connection::{Globals, Mode};
+use connection::Globals;
 use lazy_static::lazy_static;
 use log::{debug, error};
 use std::io::stdout;
 use std::time::Instant;
-use util::styles::*;
 
 use crate::connection::connect;
-use crate::input::{process_user_typing, write_mode_line};
+use crate::input::{process_user_typing, write_mode_line, Mode};
 use crate::message::process_msg;
 use crate::screen::Screen;
+use crate::util::styles::HIGHLIGHT;
 use common::config::ClientConfig;
 use common::line::Line;
 use common::proto::Sndr;
@@ -122,7 +122,7 @@ fn main() {
   let mut gv: Globals = Globals {
     uname: cfg.name.clone(),
     rname: String::from("Lobby"),
-    mode: Mode::Input,
+    mode: Mode::Insert,
     local_addr: String::default(),
     messages: Vec::new(),
     server_addr: sck.get_addr().unwrap(),

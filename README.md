@@ -1,31 +1,28 @@
 # Fresh
 
-an chat server/client made in Rust
+a chat server/client made in Rust
 
 ### Overview
 
-`fresh` is a simple IRC-like chat server with a simple, easily-extensible
-JSON-based protocol. The `freshd` server is meant to be small and easy to
-configure. There is a "reference" client, `fresh`, also written in Rust, but the
-protocol is meant to be sufficiently simple that clients (with a variety of
-features) should be easily implementable in any number of languages.
+The `fresh` project comprises a minimal chat server and client implemented in
+Rust. The chat server exposes a simple JSON-based API, intended to facilitate
+the development of feature-rich chat clients in any programming language.
 
 ### Installation
 
-Clone the repo and everything should `cargo build --release` just fine. This
-will build both the `fresh` client and the server.
+Head over to the [releases](https://github.com/lnxcz/frsh/releases) page and
+download the latest release for your platform. Extract the archive and run the
+binary.
 
 ### Client instructions
 
 #### Configuration
 
-Run `fresh -g` to generate a default config file; this will probably show up at
-`your_normal_config_dir/fresh.toml`, but it might not. In any case, a message
-will print with the path of the new file. The defaults are sane, but you'll
-probably want to at least set the server address. The config options (and their
-default values) are
+Run `fresh -g` to generate a default config file; this will save it to the
+dafault config dir. You'll probably want to at least set the server address. The
+config options (and their default values) are
 
-- `address = '127.0.0.1:51516'` The IP address and port of the server to which
+- `address = '127.0.0.1:1234'` The IP address and port of the server to which
   you'd like to connect. This can be overridden with the `-a` command-line
   option.
 
@@ -60,10 +57,10 @@ default values) are
 
 #### Use
 
-The client's operation is _modal_ (_a la_ `vi`). Because I am more sympathetic
-than Bill Joy, the client launches in _input_ mode, where text you type gets
-added to the input line and sent to the server when you hit return. This is
-indicated by the `Ipt` in the lower-left-hand corner. In this mode,
+The client's operation is _modal_. When you first start the client, you will be
+in _insert_ mode (indicated by `Ins` in the lower-left-hand corner). In this
+mode, you can type text, which will be sent to the server when you hit `Enter`.
+The following keybindings are available:
 
 - `Backspace`, `Delete`, `Home`, `End`, and `Left`/`Right` (arrow keys) act as
   you'd expect
@@ -76,76 +73,60 @@ Hitting escape (or backspace when the input line is empty) will put you in
 _command_ mode (indicated by `Com` in the lower-left-hand corner), where you
 will eventually be able to control more aspects of the client. Right now,
 
-- `q` will quit with no leave message.
-
-- `ctrl-q` will force-quit the client without sending any messages to the server
-  to disconnect cleanly. The server will eventually figure this out when the
-  client stops responding to `Msg::Ping`s, and log you out "posthumously".
+- `q` will quit the client.
 
 - `PgUp/PgDn` will scroll the chat text up/down one screen.
 
-- The up/down arrow keys will scroll the chat text up/down one line.
+- The up/down arrow keys (or K/J) will scroll the chat text up/down one line.
 
 - `alt-Up/Dn/PgUp/PgDn` will scroll the roster window.
 
-You can also type some server-interaction commands from input mode. For example,
+You can also use the following commands:
 
-- `;quit Y'all're losers!1` will disconnect from the server, showing the
-  message, "Y'all're losers!1" to everyone in the Room.
+- `;quit [message]` will quit the client, sending the optional message to the
+  room.
 
-- `;name xXx_h34d5h0t_420_xXx` will change your name to something stupid.
+- `;name <new_username>` will change your name to something stupid.
 
-- `;join Tracks of the World` will join the room called "Tracks of the World",
-  creating it if it doesn't exist. (Creation of a room also sets the creator as
-  that room's "Operator", although this currently bestows no special
-  priviliges.)
+- `;join <room>` will join the room named `<room>` or create it if it doesn't
+  exist.
 
-- `;priv somedude Come join tracksoftheworld.` will send the message "Come join
-  tracksoftheworld" to the user whose name matches `somedude` (if that user
-  exists).
+- `;priv <user> <message>` will send a private message to the user. The user can
+  be in any room.
 
-- `;who xxx` will request a list of all connected users whose names start with a
-  case-and-whitespace-insensitive match of `xxx`. A plain `;who` with no text to
-  match will return a list of all users.
+- `;who [user]` will show you a list of all users in the server, or all users
+  whose name matches `[user]` (if `[user]` is provided).
 
-- `;rooms xxx` will, like `;who` above, request a list of all extant Room names
-  that begin with a case-and-whitespace-insensitive match of `xxx`. A plain
-  `;rooms` with no text to match will return a list of all Rooms.
+- `;rooms [room]` will show you a list of all rooms on the server, or all rooms
+  whose name matches `[room]` (if `[room]` is provided).
 
-- `;block jerkuser` Will block the user whose name currently matches "jerkuser"
-  (if not already blocked).
+- `;block <user>` will block all incoming messages from the user.
 
-- `;unblock jerkuser` Will unblock same, if blocked.
+- `;unblock <user>` will unblock a blocked user.
 
-In addition if you are the Room operator, you have several more commands
-available:
+If you are the Operator of a Room, you can also use the following commands:
 
-- `;op close` will "close" the room, preventing anyone who hasn't been
-  explicitly `invite`d (see below) from entering.
+- `;op close` will "close" an open room, preventing anyone without an explicit
+  invitation from entering.
 
-- `;op open` will "open" a closed room, again allowing the general public.
+- `;op open` will "open" a closed room, allowing eeryone to enter.
 
-- `;op invite somebody` will send an invitation message to user `somebody`, as
-  well as permitting them to join an otherwise "closed" room.
+- `;op invite <user>` will send an invitation to the user whose name matches
+  `<user>` (if that user exists).
 
-- `;op kick somebody`
-- `;op ban somebody` &mdash; Both of these commands function identically,
-  removing `somebody` from the room (if present) and preventing him or her from
-  entering in the future. This ban can be lifted by an explicit `invite`.
+- `;op kick <user>` will kick the user.
 
-- `;op give somebody` will transfer the mantleship of operator to user
-  `somebody`.
+- `;op ban <user>` will ban the user and prevent them from rejoining the room.
 
-### A note about user and room names
-
-Names are allowed to contain any arbitrary unicode characters, including
-whitespace (although they cannot be made of _only_ whitespace).
+- `;op give <user>` will give Operator privileges to the user whose name matches
+  `<user>` (if that user exists).
 
 ### Server Instructions
 
-The server configuration on my machine is at `~/.config/freshd/freshd.toml`; it
-will probably be similarly placed on yours. You should make its contents look
-something like this:
+Once you start the server for the first time, it will create a `config.toml` in
+the OS-specific configuration directory. On Linux, this is
+`~/.config/fresh-server/config.toml`. You can edit this file to change the
+server's behavior. The default values are:
 
 ```toml
 address = "192.168.1.13:51516"
@@ -155,23 +136,12 @@ blackout_to_kick_ms  = 20000
 max_user_name_length = 24
 max_room_name_length = 32
 lobby_name = 'Lobby'
-welcome = "Welcome to a fresh server."
+welcome = "Welcome to the server."
 log_file = 'freshd.log'
 log_level = 1
 byte_limit = 512
 bytes_per_tick = 6
 ```
-
-although you may want to change the `address` value to match where you want your
-server to bind.
-
-You will want to run it with `nohup` if you don't want to babysit it:
-
-```sh
-you@your_machine:~/fresh $ nohup target/release/freshd &
-```
-
-and you may want to redirect `stdout` to a specific file.
 
 ### TODO (server):
 
@@ -180,6 +150,4 @@ and you may want to redirect `stdout` to a specific file.
 
 ### TODO (client):
 
-- `vi`-like search in the scrollback history
-
-- Input line history
+- Show if user is OP in roster

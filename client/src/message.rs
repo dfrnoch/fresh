@@ -15,10 +15,6 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-/** When the Sock coughs up a Msg, this function decides what to do with it.
-
-Returns true if the program should quit.
-*/
 pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), String> {
   debug!("process_msg(...): rec'd: {:?}", &m);
   match m {
@@ -82,7 +78,7 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
           sl.pushf("You", &BOLD);
           sl.push(" join ");
 
-          /* Set room name in upper-right status line. */
+          // Update the room name in the status bar.
           gv.rname = room.to_string();
           let mut room_line = Line::default();
           room_line.pushf(&gv.rname, &HIGHLIGHT);
