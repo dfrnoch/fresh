@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use crate::util::collapse;
+
 use super::proto::{End, Env};
-use super::user::{collapse, User};
+use super::user::User;
 
 #[derive(Debug)]
 pub struct Room {

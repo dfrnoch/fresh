@@ -4,7 +4,7 @@ use log::trace;
 use crossterm::{style, ExecutableCommand};
 
 lazy_static! {
-  static ref NOSTYLE: Style = {
+  static ref RESET: Style = {
     use crossterm::{style, ExecutableCommand};
     let mut buff: Vec<u8> = Vec::new();
     let cols = style::Colors::new(style::Color::Reset, style::Color::Reset);
@@ -105,7 +105,7 @@ impl Line {
     }
 
     n = self.chars.len();
-    self.fdirs.push(Fmtr::new(n, &NOSTYLE));
+    self.fdirs.push(Fmtr::new(n, &RESET));
   }
 
   /** Append a copy of the contents of `other` to `self`. */

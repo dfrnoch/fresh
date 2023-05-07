@@ -160,10 +160,6 @@ impl Screen {
     self.input_dirty = true;
   }
 
-  /** Delete the character on the input line before the cursor.
-
-  Obviously, this does nothing if the cursor is at the beginning.
-  */
   pub fn input_backspace(&mut self) {
     let ilen = self.input.len() as u16;
     if ilen == 0 || self.input_ip == 0 {
