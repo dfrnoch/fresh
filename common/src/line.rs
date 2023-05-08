@@ -89,12 +89,12 @@ impl Line {
   }
 
   /// Add a chunk of _formatted_ text to the end of the `Line`.
-  pub fn pushf<T: AsRef<str>>(&mut self, s: T, styl: &Style) {
+  pub fn pushf<T: AsRef<str>>(&mut self, s: T, style: &Style) {
     self.width = None;
     self.nchars = None;
 
     let mut n: usize = self.chars.len();
-    self.fdirs.push(Fmtr::new(n, styl));
+    self.fdirs.push(Fmtr::new(n, style));
 
     for c in s.as_ref().chars() {
       self.chars.push(c);
@@ -118,8 +118,8 @@ impl Line {
     }
   }
 
-  fn wrap(&mut self, tgt: usize) {
-    let mut wraps: Vec<usize> = Vec::with_capacity(1 + self.chars.len() / tgt);
+  fn wrap(&mut self, width: usize) {
+    let mut wraps: Vec<usize> = Vec::with_capacity(1 + self.chars.len() / width);
     let mut x: usize = 0;
     let mut lws: usize = 0;
     let mut write_leading_ws: bool = true;
@@ -127,8 +127,8 @@ impl Line {
     trace!("chars: {}", &(self.chars.iter().collect::<String>()));
 
     for (i, c) in self.chars.iter().enumerate() {
-      if x == tgt {
-        wraps.push(if i - tgt >= lws { i } else { lws });
+      if x == width {
+        wraps.push(if i - width >= lws { i } else { lws });
         x = i - lws;
         write_leading_ws = false;
       }
@@ -146,7 +146,7 @@ impl Line {
 
     self.render = Vec::with_capacity(wraps.len() + 1);
     let mut fmt_iter = self.fdirs.iter().peekable();
-    let mut cur_line = String::with_capacity(tgt);
+    let mut cur_line = String::with_capacity(width);
     write_leading_ws = true;
     let mut wrap_idx: usize = 0;
     let mut line_len: usize = 0;
@@ -180,7 +180,7 @@ impl Line {
     }
 
     self.render.push(cur_line);
-    self.width = Some(tgt);
+    self.width = Some(width);
   }
 
   pub fn lines(&mut self, width: usize) -> &[String] {

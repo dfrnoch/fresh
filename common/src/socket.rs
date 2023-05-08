@@ -96,29 +96,16 @@ impl Socket {
     }
   }
 
-  /** By default, each nonblocking `.suck()` call will attempt to read
-  DEFAULT_BUFFER_SIZE (1024) bytes. You can change that with this function.
-
-  Setting this to 0 would be pointless and stupid.
-  */
   pub fn set_read_buffer_size(&mut self, new_size: usize) {
     self.read_buff.resize(new_size, 0u8);
   }
 
-  /** Returns how many bytes this attempts to read per `.suck()`. */
   pub fn get_read_buffer_size(&self) -> usize {
     self.read_buff.len()
   }
 
-  /** Attempts to read data from the underlying stream, copying it into
-  its internal buffer for later attempted decoding. If this returns the
-  `Err(SocketError)` variant, it should probably be `.shutdown()`. Otherwise,
-  returns the number of bytes read.
-
-  A return value of `Ok(0)` either means there wasn't any data to read,
-  or something nonfatal interrupted the attempt to read.
-  */
-  pub fn suck(&mut self) -> Result<usize, SocketError> {
+  /// Attempts to read data from the underlying socket into the read buffer.
+  pub fn read_data(&mut self) -> Result<usize, SocketError> {
     match self.stream.read(&mut self.read_buff) {
       Err(e) => match e.kind() {
         std::io::ErrorKind::WouldBlock => Ok(0),
@@ -160,22 +147,16 @@ impl Socket {
     maybe_msg.map_err(|e| SocketError::from_err(4, &e))
   }
 
-  /** Copies `data` to the outgoing send buffer, to be sent on subesequent
-  calls to `.blow()`. Needless to say, `data` should be a JSON-encoded
-  `proto3::Sndr`.
-  */
   pub fn enqueue(&mut self, data: &[u8]) {
     self.send_buff.extend_from_slice(data);
   }
 
-  /** Attempts to write data that's been `.enqueue()`d onto the internal
-  send buffer to the underlying stream. Returns the number of bytes _left
-  in the send buffer_, as opposed to the number of bytes sent. This way,
-  `Ok(0)` always means the send buffer is empty. As with other functions
-  that can return an error, this is probably fatal and the `Sock` should
-  be `.shutdown()`.
-  */
-  pub fn blow(&mut self) -> Result<usize, SocketError> {
+  /// Attempts to send the contents of the send buffer to the remote endpoint.
+  /// Returns the number of bytes remaining in the send buffer.
+  /// If this returns the `Err(SocketError)` variant, it should probably be
+  /// `.shutdown()`.
+  /// A return value of `Ok(0)` means the send buffer is empty.
+  pub fn send_data(&mut self) -> Result<usize, SocketError> {
     let res = self.stream.write(&self.send_buff);
 
     match res {
@@ -206,7 +187,7 @@ impl Socket {
   ) -> Result<(), SocketError> {
     self.enqueue(data);
     loop {
-      if 0 == self.blow()? {
+      if 0 == self.send_data()? {
         return Ok(());
       }
       std::thread::sleep(tick);

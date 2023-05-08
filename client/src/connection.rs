@@ -15,13 +15,13 @@ pub struct Globals {
 }
 
 impl Globals {
-  pub fn enqueue(&mut self, m: &Sndr) {
-    let b = m.bytes();
-    self.socket.enqueue(&b);
+  pub fn enqueue(&mut self, msg: &Sndr) {
+    let bytes = msg.bytes();
+    self.socket.enqueue(&bytes);
   }
 
-  pub fn enqueue_bytes(&mut self, b: &[u8]) {
-    self.socket.enqueue(b);
+  pub fn enqueue_bytes(&mut self, bytes: &[u8]) {
+    self.socket.enqueue(bytes);
   }
 }
 
@@ -31,15 +31,15 @@ pub fn connect(cfg: &ClientConfig) -> Result<Socket, String> {
     Err(e) => {
       return Err(format!("Error connecting to {}: {}", cfg.address, e));
     }
-    Ok(s) => match Socket::new(s) {
+    Ok(stream) => match Socket::new(stream) {
       Err(e) => {
         return Err(format!("Error setting up socket: {}", e));
       }
-      Ok(sck) => sck,
+      Ok(socket) => socket,
     },
   };
-  let b = Sndr::Name(&cfg.name).bytes();
-  let res = socket.blocking_send(&b, cfg.tick);
+  let bytes = Sndr::Name(&cfg.name).bytes();
+  let res = socket.blocking_send(&bytes, cfg.tick);
 
   if let Err(e) = res {
     match socket.shutdown() {

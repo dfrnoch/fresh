@@ -15,11 +15,11 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), String> {
-  debug!("process_msg(...): rec'd: {:?}", &m);
-  match m {
+pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Result<(), String> {
+  debug!("process_msg(...): rec'd: {:?}", &msg);
+  match msg {
     Rcvr::Ping => {
-      gv.socket.enqueue(&PING);
+      global.socket.enqueue(&PING);
     }
 
     Rcvr::Text { who, lines } => {
@@ -28,7 +28,7 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.pushf(&who, &HIGHLIGHT);
         sl.push(": ");
         sl.push(lin);
-        scrn.push_line(sl);
+        screen.push_line(sl);
       }
     }
 
@@ -38,26 +38,26 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
       sl.pushf(&who, &DIM);
       sl.push(": ");
       sl.push(&text);
-      scrn.push_line(sl);
+      screen.push_line(sl);
     }
 
     Rcvr::Logout(s) => {
-      gv.messages.push(s);
-      gv.run = false;
+      global.messages.push(s);
+      global.run = false;
     }
 
     Rcvr::Info(s) => {
       let mut sl = Line::default();
       sl.push("* ");
       sl.push(&s);
-      scrn.push_line(sl);
+      screen.push_line(sl);
     }
 
     Rcvr::Err(s) => {
       let mut sl = Line::default();
       sl.pushf("# ", &DIM);
       sl.pushf(&s, &DIM);
-      scrn.push_line(sl);
+      screen.push_line(sl);
     }
 
     Rcvr::Misc {
@@ -69,35 +69,35 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         let (name, room) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
         let mut sl = Line::default();
         sl.push("* ");
-        if name.as_str() == gv.uname.as_str() {
+        if name.as_str() == global.uname.as_str() {
           sl.pushf("You", &BOLD);
           sl.push(" joined ");
 
           // Update the room name in the status bar.
-          gv.rname = room.to_string();
+          global.rname = room.to_string();
           let mut room_line = Line::default();
-          room_line.pushf(&gv.rname, &HIGHLIGHT);
-          scrn.set_stat_ur(room_line);
+          room_line.pushf(&global.rname, &HIGHLIGHT);
+          screen.set_stat_ur(room_line);
         } else {
           sl.pushf(name, &HIGHLIGHT);
           sl.push(" joins ");
         }
         sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
-        gv.enqueue_bytes(&ROSTER_REQUEST);
-        scrn.push_line(sl);
+        global.enqueue_bytes(&ROSTER_REQUEST);
+        screen.push_line(sl);
       }
 
       "leave" => {
         let (name, message) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
         let mut sl = Line::default();
@@ -105,15 +105,15 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.pushf(name, &HIGHLIGHT);
         sl.push(" leaves: ");
         sl.push(message);
-        gv.enqueue_bytes(&ROSTER_REQUEST);
-        scrn.push_line(sl);
+        global.enqueue_bytes(&ROSTER_REQUEST);
+        screen.push_line(sl);
       }
 
       "priv_echo" => {
         let (name, text) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
         let mut sl = Line::default();
@@ -123,45 +123,45 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.pushf(name, &HIGHLIGHT);
         sl.push(": ");
         sl.push(text);
-        scrn.push_line(sl);
+        screen.push_line(sl);
       }
 
       "name" => {
         let (old, new) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
 
         let mut sl = Line::default();
         sl.push("* ");
-        if old.as_str() == gv.uname.as_str() {
+        if old.as_str() == global.uname.as_str() {
           sl.pushf("You", &BOLD);
           sl.push(" are now known as ");
-          gv.uname.clone_from(new);
-          write_mode_line(scrn, gv);
+          global.uname.clone_from(new);
+          write_mode_line(screen, global);
         } else {
           sl.pushf(old, &HIGHLIGHT);
           sl.push(" is now known as ");
         }
         sl.pushf(new, &HIGHLIGHT);
         sl.push(".");
-        scrn.push_line(sl);
-        gv.enqueue_bytes(&ROSTER_REQUEST);
+        screen.push_line(sl);
+        global.enqueue_bytes(&ROSTER_REQUEST);
       }
 
       "new_op" => {
         let (name, room) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
 
         let mut sl = Line::default();
         sl.push("* ");
-        if name == &gv.uname {
+        if name == &global.uname {
           sl.pushf("You", &BOLD);
           sl.push(" are now the operator of ");
         } else {
@@ -170,23 +170,23 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         }
         sl.pushf(room, &BOLD);
         sl.push(".");
-        scrn.push_line(sl);
-        gv.enqueue_bytes(&ROSTER_REQUEST);
+        screen.push_line(sl);
+        global.enqueue_bytes(&ROSTER_REQUEST);
       }
 
       "roster" => {
         if data.is_empty() {
-          return Err(format!("Incomplete data: {:?}", &m));
+          return Err(format!("Incomplete data: {:?}", &msg));
         }
 
-        scrn.set_roster(data);
+        screen.set_roster(data);
       }
 
       "kick_other" => {
         let (name, room) = match &data[..] {
           [x, y] => (x, y),
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
         let mut sl = Line::default();
@@ -195,15 +195,15 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.push(" has been kicked from ");
         sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
-        scrn.push_line(sl);
-        gv.enqueue_bytes(&ROSTER_REQUEST);
+        screen.push_line(sl);
+        global.enqueue_bytes(&ROSTER_REQUEST);
       }
 
       "kick_you" => {
         let room = match &data[..] {
           [x] => x,
           _ => {
-            return Err(format!("Incomplete data: {:?}", &m));
+            return Err(format!("Incomplete data: {:?}", &msg));
           }
         };
         let mut sl = Line::default();
@@ -212,16 +212,16 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.push(" have been kicked from ");
         sl.pushf(room, &HIGHLIGHT);
         sl.push(".");
-        scrn.push_line(sl);
+        screen.push_line(sl);
       }
 
       "addr" => match data.get(0) {
         None => {
-          return Err(format!("Incomplete data: {:?}", &m));
+          return Err(format!("Incomplete data: {:?}", &msg));
         }
         Some(addr) => {
-          gv.local_addr.clone_from(addr);
-          write_mode_line(scrn, gv);
+          global.local_addr.clone_from(addr);
+          write_mode_line(screen, global);
         }
       },
 
@@ -229,7 +229,7 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         let mut sl = Line::default();
         sl.push("* ");
         sl.push(alt);
-        scrn.push_line(sl)
+        screen.push_line(sl)
       }
     },
 
@@ -245,30 +245,26 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
       let mut sl = Line::default();
       sl.push("# Unsupported Rcvr: ");
       sl.push(&s);
-      scrn.push_line(sl);
+      screen.push_line(sl);
     }
   }
   Ok(())
 }
 
-/** In input mode, when the user hits return, this processes processes the
-content of the input line and decides what to do.
-*/
-pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals) {
-  if let Some(c) = ipt.first() {
-    if *c == gv.cmd {
-      if ipt.len() == 1 {
+/// In input mode, when the user hits return, this processes processes the
+/// content of the input line and decides what to do.
+pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut Globals) {
+  if let Some(c) = input.first() {
+    if *c == global.cmd {
+      if input.len() == 1 {
         return;
       }
 
-      /* Collect the ipt vector as a string, discarding the cmd_char and
-      translating newlines to spaces. */
-      let cmd_line: String = ipt[1..]
+      let cmd_line: String = input[1..]
         .iter()
         .map(|c| if *c == RETURN { SPACE } else { *c })
         .collect();
 
-      /* Tokenize the resulting string. */
       let cmd_toks = tokenize_whitespace(&cmd_line);
       let cmd = cmd_toks[0].to_lowercase();
 
@@ -277,40 +273,40 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
           let mut sl = Line::default();
           sl.pushf("# ", &DIM_BOLD);
           sl.pushf("Commands:", &DIM);
-          scrn.push_line(sl);
+          screen.push_line(sl);
           sl = Line::default();
           sl.pushf("# ", &DIM_BOLD);
           sl.pushf("  /quit", &DIM);
           sl.push(" - quit the program");
-          scrn.push_line(sl);
+          screen.push_line(sl);
           sl = Line::default();
           sl.pushf("# ", &DIM_BOLD);
           sl.pushf("  /name <name>", &DIM);
           sl.push(" - change your name");
-          scrn.push_line(sl);
+          screen.push_line(sl);
           sl = Line::default();
           sl.pushf("# ", &DIM_BOLD);
           sl.pushf("  /priv <name> <text>", &DIM);
           sl.push(" - send a private message");
-          scrn.push_line(sl);
+          screen.push_line(sl);
           sl = Line::default();
           sl.pushf("# ", &DIM_BOLD);
           sl.pushf("  /join <room>", &DIM);
           sl.push(" - join a room");
-          scrn.push_line(sl);
+          screen.push_line(sl);
         }
-        "quit" => match split_command_toks(&cmd_toks, 1) {
+        "quit" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Logout(&arg));
+            global.enqueue(&Sndr::Logout(&arg));
           }
           Err(_) => {
             return;
           }
         },
 
-        "priv" => match split_command_toks(&cmd_toks, 2) {
+        "priv" => match split_command_tokens(&cmd_toks, 2) {
           Ok((cmds, arg)) => {
-            gv.enqueue(&Sndr::Priv {
+            global.enqueue(&Sndr::Priv {
               who: cmds[1],
               text: &arg,
             });
@@ -321,31 +317,31 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
               "# You must specify a recipient for a private message.",
               &DIM,
             );
-            scrn.push_line(sl);
+            screen.push_line(sl);
           }
         },
 
-        "name" => match split_command_toks(&cmd_toks, 1) {
+        "name" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Name(&arg));
+            global.enqueue(&Sndr::Name(&arg));
           }
           Err(_) => {
             return;
           }
         },
 
-        "join" => match split_command_toks(&cmd_toks, 1) {
+        "join" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Join(&arg));
+            global.enqueue(&Sndr::Join(&arg));
           }
           Err(_) => {
             return;
           }
         },
 
-        "who" | "rooms" => match split_command_toks(&cmd_toks, 1) {
+        "who" | "rooms" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Query {
+            global.enqueue(&Sndr::Query {
               what: &cmd,
               arg: &arg,
             });
@@ -355,29 +351,29 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
           }
         },
 
-        "block" => match split_command_toks(&cmd_toks, 1) {
+        "block" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Block(&arg));
+            global.enqueue(&Sndr::Block(&arg));
           }
           Err(_) => {
             return;
           }
         },
 
-        "unblock" => match split_command_toks(&cmd_toks, 1) {
+        "unblock" => match split_command_tokens(&cmd_toks, 1) {
           Ok((_, arg)) => {
-            gv.enqueue(&Sndr::Unblock(&arg));
+            global.enqueue(&Sndr::Unblock(&arg));
           }
           Err(_) => {
             return;
           }
         },
 
-        "op" => match split_command_toks(&cmd_toks, 2) {
+        "op" => match split_command_tokens(&cmd_toks, 2) {
           Err(_) => {
             let mut sl = Line::default();
             sl.pushf(OP_ERROR, &DIM);
-            scrn.push_line(sl);
+            screen.push_line(sl);
           }
           Ok((cmds, arg)) => {
             let msg: Option<Sndr> = match cmds[1].to_lowercase().as_str() {
@@ -389,12 +385,12 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
               _ => {
                 let mut sl = Line::default();
                 sl.pushf(OP_ERROR, &DIM);
-                scrn.push_line(sl);
+                screen.push_line(sl);
                 None
               }
             };
             if let Some(m) = msg {
-              gv.enqueue(&m);
+              global.enqueue(&m);
             }
           }
         },
@@ -403,7 +399,7 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
           let mut sl = Line::default();
           sl.pushf("# Unknown command ", &DIM);
           sl.pushf(x, &DIM_BOLD);
-          scrn.push_line(sl);
+          screen.push_line(sl);
         }
       }
       return;
@@ -412,7 +408,7 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
 
   let mut lines: Vec<String> = Vec::new();
   let mut cur_line = String::default();
-  for c in ipt.into_iter() {
+  for c in input.into_iter() {
     if c == '\n' {
       lines.push(cur_line);
       cur_line = String::default();
@@ -422,14 +418,14 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
   }
   lines.push(cur_line);
   let lineref: Vec<&str> = lines.iter().map(|x| x.as_str()).collect();
-  gv.enqueue(&Sndr::Text {
+  global.enqueue(&Sndr::Text {
     who: "",
     lines: &lineref,
   });
 }
 
 /// Split a vector of &str into a vector of commands and a single argument.
-fn split_command_toks<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a str>, String), ()> {
+fn split_command_tokens<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a str>, String), ()> {
   if n_cmds == 0 || toks.len() < (2 * n_cmds) - 1 {
     return Err(());
   }
@@ -447,13 +443,13 @@ fn split_command_toks<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a st
 
 /// Split a string into a vector of &str, splitting on whitespace.
 fn tokenize_whitespace(s: &str) -> Vec<&str> {
-  let mut v: Vec<&str> = Vec::new();
+  let mut vec: Vec<&str> = Vec::new();
 
   let mut change: usize = 0;
   let mut s_iter = s.chars();
   let mut in_ws = match s_iter.next() {
     None => {
-      return v;
+      return vec;
     }
     Some(c) => c.is_whitespace(),
   };
@@ -462,17 +458,17 @@ fn tokenize_whitespace(s: &str) -> Vec<&str> {
   for (i, c) in s_iter {
     if in_ws {
       if !c.is_whitespace() {
-        v.push(&s[change..i]);
+        vec.push(&s[change..i]);
         change = i;
         in_ws = false;
       }
     } else if c.is_whitespace() {
-      v.push(&s[change..i]);
+      vec.push(&s[change..i]);
       change = i;
       in_ws = true;
     }
   }
-  v.push(&s[change..(s.len())]);
+  vec.push(&s[change..(s.len())]);
 
-  v
+  vec
 }

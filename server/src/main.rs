@@ -98,22 +98,22 @@ fn main() {
       }
     }
 
-    if let Ok(mut u) = urecvr.try_recv() {
-      debug!("Accepting user {}: {}", u.get_id(), u.get_name());
-      u.deliver_msg(&Sndr::Info(&cfg.welcome));
+    if let Ok(mut user) = urecvr.try_recv() {
+      debug!("Accepting user {}: {}", user.get_id(), user.get_name());
+      user.deliver_msg(&Sndr::Info(&cfg.welcome));
 
       let mut rename: Option<String> = None;
-      if u.get_idstr().is_empty() {
+      if user.get_idstr().is_empty() {
         rename = Some(String::from(
           "Your name does not have enough whitespace characters.",
         ));
-      } else if u.get_name().len() > cfg.max_user_name_length {
+      } else if user.get_name().len() > cfg.max_user_name_length {
         rename = Some(format!(
           "Your name cannot be longer than {} chars.",
           cfg.max_user_name_length
         ));
       } else {
-        let maybe_same_name = ustr_map.get(u.get_idstr());
+        let maybe_same_name = ustr_map.get(user.get_idstr());
         if let Some(user_n) = maybe_same_name {
           rename = Some(format!(
             "Name \"{}\" exists.",
@@ -123,36 +123,36 @@ fn main() {
       }
 
       if let Some(err_msg) = rename {
-        let new_name = gen_name(u.get_id(), &ustr_map);
+        let new_name = gen_name(user.get_id(), &ustr_map);
         let msg = Sndr::Err(&err_msg);
-        u.deliver_msg(&msg);
-        let old_name = u.get_name().to_string();
-        let dat: [&str; 2] = [&old_name, &new_name];
+        user.deliver_msg(&msg);
+        let old_name = user.get_name().to_string();
+        let data: [&str; 2] = [&old_name, &new_name];
         let altstr = format!("You are now known as \"{}\".", &new_name);
         let msg = Sndr::Misc {
           what: "name",
-          data: &dat,
+          data: &data,
           alt: &altstr,
         };
-        u.set_name(&new_name);
-        u.deliver_msg(&msg);
+        user.set_name(&new_name);
+        user.deliver_msg(&msg);
       }
 
-      let dat: [&str; 2] = [u.get_name(), &cfg.lobby_name];
+      let data: [&str; 2] = [user.get_name(), &cfg.lobby_name];
       let env = Env::new(
         End::Server,
         End::Room(0),
         &Sndr::Misc {
           what: "join",
-          data: &dat,
-          alt: &format!("{} joins {}.", u.get_name(), &cfg.lobby_name),
+          data: &data,
+          alt: &format!("{} joins {}.", user.get_name(), &cfg.lobby_name),
         },
       );
       let lobby = room_map.get_mut(&0).unwrap();
-      lobby.join(u.get_id());
+      lobby.join(user.get_id());
       lobby.enqueue(env);
-      ustr_map.insert(u.get_idstr().to_string(), u.get_id());
-      user_map.insert(u.get_id(), u);
+      ustr_map.insert(user.get_idstr().to_string(), user.get_id());
+      user_map.insert(user.get_id(), user);
     }
 
     let loop_time = Instant::now().duration_since(now);

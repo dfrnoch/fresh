@@ -16,124 +16,124 @@ pub enum Mode {
   Delete,
 }
 
-fn command_key(evt: event::KeyEvent, scrn: &mut Screen, gv: &mut Globals) {
-  match gv.mode {
-    Mode::Command => match evt.code {
-      KeyCode::Char(' ') | KeyCode::Enter => gv.mode = Mode::Insert,
+fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) {
+  match global.mode {
+    Mode::Command => match event.code {
+      KeyCode::Char(' ') | KeyCode::Enter => global.mode = Mode::Insert,
 
-      KeyCode::Up | KeyCode::Char('k') => scrn.scroll_lines(1),
-      KeyCode::Down | KeyCode::Char('j') => scrn.scroll_lines(-1),
+      KeyCode::Up | KeyCode::Char('k') => screen.scroll_lines(1),
+      KeyCode::Down | KeyCode::Char('j') => screen.scroll_lines(-1),
 
-      KeyCode::Left | KeyCode::Char('h') => scrn.input_skip_chars(-1),
-      KeyCode::Right | KeyCode::Char('l') => scrn.input_skip_chars(1),
+      KeyCode::Left | KeyCode::Char('h') => screen.input_skip_chars(-1),
+      KeyCode::Right | KeyCode::Char('l') => screen.input_skip_chars(1),
 
-      KeyCode::Char('w') => scrn.input_skip_words(1),
-      KeyCode::Char('b') => scrn.input_skip_words(-1),
+      KeyCode::Char('w') => screen.input_skip_words(1),
+      KeyCode::Char('b') => screen.input_skip_words(-1),
 
       KeyCode::Char('0') => {
-        let delta = scrn.get_input_length() as i16;
-        scrn.input_skip_chars(-delta);
+        let delta = screen.get_input_length() as i16;
+        screen.input_skip_chars(-delta);
       }
       KeyCode::Char('$') => {
-        let delta = scrn.get_input_length() as i16;
-        scrn.input_skip_chars(delta);
+        let delta = screen.get_input_length() as i16;
+        screen.input_skip_chars(delta);
       }
 
       KeyCode::Char('a') => {
-        scrn.input_skip_chars(1);
-        gv.mode = Mode::Insert;
+        screen.input_skip_chars(1);
+        global.mode = Mode::Insert;
       }
-      KeyCode::Char('i') => gv.mode = Mode::Insert,
+      KeyCode::Char('i') => global.mode = Mode::Insert,
 
       KeyCode::PageUp => {
-        let jump = (scrn.get_main_height() as i16) - 1;
-        scrn.scroll_lines(jump);
+        let jump = (screen.get_main_height() as i16) - 1;
+        screen.scroll_lines(jump);
       }
       KeyCode::PageDown => {
-        let jump = 1 - (scrn.get_main_height() as i16);
-        scrn.scroll_lines(jump);
+        let jump = 1 - (screen.get_main_height() as i16);
+        screen.scroll_lines(jump);
       }
-      KeyCode::Char('q') => gv.enqueue(&Sndr::Logout("[ client quit ]")),
-      KeyCode::Char('d') => gv.mode = Mode::Delete,
+      KeyCode::Char('q') => global.enqueue(&Sndr::Logout("[ client quit ]")),
+      KeyCode::Char('d') => global.mode = Mode::Delete,
       _ => {}
     },
-    Mode::Delete => match evt.code {
+    Mode::Delete => match event.code {
       KeyCode::Char('h') => {
-        scrn.input_skip_chars(-1);
+        screen.input_skip_chars(-1);
         // scrn.delete_char();
-        gv.mode = Mode::Command;
+        global.mode = Mode::Command;
       }
       KeyCode::Char('l') => {
-        scrn.input_skip_chars(1);
+        screen.input_skip_chars(1);
         // scrn.delete_char();
-        gv.mode = Mode::Command;
+        global.mode = Mode::Command;
       }
       KeyCode::Char('d') => {
-        scrn.pop_input();
-        gv.mode = Mode::Command;
+        screen.pop_input();
+        global.mode = Mode::Command;
       }
       KeyCode::Char('w') => {
-        scrn.input_delete_words(1);
-        gv.mode = Mode::Command;
+        screen.input_delete_words(1);
+        global.mode = Mode::Command;
       }
       KeyCode::Char('b') => {
-        scrn.input_delete_words(-1);
-        gv.mode = Mode::Command;
+        screen.input_delete_words(-1);
+        global.mode = Mode::Command;
       }
       _ => {
-        gv.mode = Mode::Command;
+        global.mode = Mode::Command;
       }
     },
     _ => {}
   }
 }
 
-fn input_key(evt: event::KeyEvent, scrn: &mut Screen, gv: &mut Globals) {
-  match evt.code {
-    KeyCode::Enter => respond_to_user_input(scrn.pop_input(), scrn, gv),
+fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) {
+  match event.code {
+    KeyCode::Enter => respond_to_user_input(screen.pop_input(), screen, global),
 
     KeyCode::Backspace => {
-      if scrn.get_input_length() == 0 {
-        gv.mode = Mode::Command;
+      if screen.get_input_length() == 0 {
+        global.mode = Mode::Command;
       } else {
-        scrn.input_backspace();
+        screen.input_backspace();
       }
     }
 
-    KeyCode::Left => scrn.input_skip_chars(-1),
+    KeyCode::Left => screen.input_skip_chars(-1),
 
-    KeyCode::Right => scrn.input_skip_chars(1),
+    KeyCode::Right => screen.input_skip_chars(1),
 
     KeyCode::Esc => {
-      gv.mode = Mode::Command;
+      global.mode = Mode::Command;
     }
     KeyCode::Char(c) => {
-      scrn.input_char(c);
+      screen.input_char(c);
     }
     _ => {}
   }
 }
 
-pub fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Result<bool> {
+pub fn process_user_typing(screen: &mut Screen, global: &mut Globals) -> crossterm::Result<bool> {
   let mut should_refresh: bool = false;
 
   while event::poll(Duration::from_millis(0))? {
-    let cur_mode = gv.mode;
+    let cur_mode = global.mode;
 
     match event::read()? {
-      Event::Key(evt) => {
-        trace!("event: {:?}", evt);
-        match gv.mode {
-          Mode::Command | Mode::Delete => command_key(evt, scrn, gv),
-          Mode::Insert => input_key(evt, scrn, gv),
+      Event::Key(event) => {
+        trace!("event: {:?}", event);
+        match global.mode {
+          Mode::Command | Mode::Delete => command_key(event, screen, global),
+          Mode::Insert => input_key(event, screen, global),
         }
       }
-      Event::Resize(w, h) => scrn.resize(w, h),
+      Event::Resize(w, h) => screen.resize(w, h),
       _ => {}
     }
 
-    if cur_mode != gv.mode {
-      write_mode_line(scrn, gv);
+    if cur_mode != global.mode {
+      write_mode_line(screen, global);
     }
     should_refresh = true;
   }
@@ -142,17 +142,17 @@ pub fn process_user_typing(scrn: &mut Screen, gv: &mut Globals) -> crossterm::Re
 }
 
 /// Write the mode line to the screen.
-pub fn write_mode_line(scrn: &mut Screen, gv: &Globals) {
+pub fn write_mode_line(screen: &mut Screen, global: &Globals) {
   let mut mode_line = Line::default();
-  let mch: &str = match gv.mode {
+  let mch: &str = match global.mode {
     Mode::Insert => "Ins",
     Mode::Command => "Com",
     Mode::Delete => "Del",
   };
   mode_line.pushf(mch, &HIGHLIGHT);
   mode_line.pushf(" │ ", &DIM);
-  mode_line.pushf(&(gv.uname), &HIGHLIGHT);
+  mode_line.pushf(&(global.uname), &HIGHLIGHT);
   mode_line.push(" @ ");
-  mode_line.pushf(&(gv.local_addr), &HIGHLIGHT);
-  scrn.set_stat_ll(mode_line);
+  mode_line.pushf(&(global.local_addr), &HIGHLIGHT);
+  screen.set_stat_ll(mode_line);
 }

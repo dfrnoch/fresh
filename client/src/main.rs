@@ -119,7 +119,7 @@ fn main() {
   }
   println!("...success. Initializing terminal.");
 
-  let mut gv: Globals = Globals {
+  let mut global: Globals = Globals {
     uname: cfg.name.clone(),
     rname: String::from("Lobby"),
     mode: Mode::Insert,
@@ -133,7 +133,7 @@ fn main() {
 
   {
     let mut term = stdout();
-    let mut scrn: Screen = match Screen::new(&mut term, cfg.roster_width) {
+    let mut screen: Screen = match Screen::new(&mut term, cfg.roster_width) {
       Ok(x) => x,
       Err(e) => {
         println!("Error setting up terminal: {}", e);
@@ -142,29 +142,32 @@ fn main() {
     };
 
     let mut addr_line = Line::default();
-    addr_line.pushf(&gv.server_addr, &HIGHLIGHT);
-    scrn.set_stat_ul(addr_line);
+    addr_line.pushf(&global.server_addr, &HIGHLIGHT);
+    screen.set_stat_ul(addr_line);
 
     let mut room_line = Line::default();
-    room_line.pushf(&gv.rname, &HIGHLIGHT);
-    scrn.set_stat_ur(room_line);
-    write_mode_line(&mut scrn, &gv);
+    room_line.pushf(&global.rname, &HIGHLIGHT);
+    screen.set_stat_ur(room_line);
+    write_mode_line(&mut screen, &global);
 
     'main_loop: loop {
       let loop_start = Instant::now();
 
       'input_loop: loop {
-        match process_user_typing(&mut scrn, &mut gv) {
+        match process_user_typing(&mut screen, &mut global) {
           Err(e) => {
-            gv.messages
+            global
+              .messages
               .push(format!("Error getting event from keyboard: {}", e));
             break 'main_loop;
           }
           Ok(true) => {
-            if let Err(e) = scrn.refresh(&mut term) {
-              gv.messages.push(format!("Error refreshing screen: {}", e));
+            if let Err(e) = screen.refresh(&mut term) {
+              global
+                .messages
+                .push(format!("Error refreshing screen: {}", e));
               break 'main_loop;
-            } else if !gv.run {
+            } else if !global.run {
               break 'main_loop;
             }
           }
@@ -174,47 +177,44 @@ fn main() {
         }
       }
 
-      let outgoing_bytes = gv.socket.send_buff_size();
-      match gv.socket.blow() {
+      let outgoing_bytes = global.socket.send_buff_size();
+      match global.socket.send_data() {
         Err(e) => {
-          gv.messages.push(format!("{}", e));
+          global.messages.push(format!("{}", e));
           break 'main_loop;
         }
         Ok(n) => {
           let sent = outgoing_bytes - n;
           if sent > 0 {
-            debug!("Sock::blow() wrote {} bytes.", sent);
+            debug!("Socket::send_data() wrote {} bytes.", sent);
           }
         }
       }
 
-      /* Try to suck from the byte stream incoming from the server.
-
-      If there's anything there, attempt to decode `Msg`s from the
-      `Sock` and process them until there's nothing left. */
-      let suck_res = gv.socket.suck();
-      match suck_res {
+      // Try to read from the byte stream incoming from the server.
+      let res = global.socket.read_data();
+      match res {
         Err(e) => {
-          gv.messages.push(format!("{}", e));
+          global.messages.push(format!("{}", e));
           break 'main_loop;
         }
         Ok(0) => {}
         Ok(n) => {
-          debug!("Sock::suck() huffed {} bytes.", n);
+          debug!("Socket::read_data() huffed {} bytes.", n);
           'msg_loop: loop {
-            let get_res = gv.socket.try_get();
+            let get_res = global.socket.try_get();
             match get_res {
               Err(e) => {
-                gv.messages.push(format!("{}", e));
+                global.messages.push(format!("{}", e));
                 break 'main_loop;
               }
               Ok(None) => {
                 break 'msg_loop;
               }
               Ok(Some(msg)) => {
-                match process_msg(msg, &mut scrn, &mut gv) {
+                match process_msg(msg, &mut screen, &mut global) {
                   Ok(()) => {
-                    if !gv.run {
+                    if !global.run {
                       break 'main_loop;
                     }
                   }
@@ -228,12 +228,14 @@ fn main() {
         }
       }
 
-      if scrn.get_scrollback_length() > cfg.max_scrollback {
-        scrn.prune_scrollback(cfg.min_scrollback);
+      if screen.get_scrollback_length() > cfg.max_scrollback {
+        screen.prune_scrollback(cfg.min_scrollback);
       }
 
-      if let Err(e) = scrn.refresh(&mut term) {
-        gv.messages.push(format!("Error refreshing screen: {}", e));
+      if let Err(e) = screen.refresh(&mut term) {
+        global
+          .messages
+          .push(format!("Error refreshing screen: {}", e));
         break 'main_loop;
       }
 
@@ -244,7 +246,7 @@ fn main() {
     }
   }
 
-  for m in &gv.messages {
+  for m in &global.messages {
     println!("{}", &m);
   }
 }

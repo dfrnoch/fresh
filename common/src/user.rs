@@ -1,4 +1,3 @@
-
 use crate::util::collapse;
 
 use super::proto::{End, Env, Rcvr, Sndr};
@@ -96,20 +95,10 @@ impl User {
     self.idstr = collapse(new_name);
   }
 
-  /** To implement throttling, the `User` increments and internal byte
-  counter whenever certain types of `Msg`s are decoded from the underlying
-  socket; this count can be lowered over time.
-
-  This method returns the value of that internal counter.
-  */
   pub fn get_byte_quota(&self) -> usize {
     self.quota_bytes
   }
 
-  /** To implement throttling, the `User` increments and internal byte
-  counter whenever certain types of `Msg`s are decoded from the underlying
-  socket; this method can be used to lower that internal counter.
-  */
   pub fn drain_byte_quota(&mut self, amount: usize) {
     if amount > self.quota_bytes {
       self.quota_bytes = 0;
@@ -118,14 +107,10 @@ impl User {
     }
   }
 
-  /** Returns the time when the last `Msg` was successfuly read from
-  the underlying socket.
-  */
   pub fn get_last_data_time(&self) -> Instant {
     self.last_data_time
   }
 
-  // Returns true if any errors have accumulated.
   pub fn has_errors(&self) -> bool {
     !self.errs.is_empty()
   }
@@ -138,19 +123,13 @@ impl User {
     UserError::from_sockets(&(self.errs))
   }
 
-  /** Attempt to send a logout message and close the underlying socket.
-  Appropriate for both clean logouts and forced logouts due to errors.
-  */
   pub fn logout(&mut self, logout_message: &str) {
     let msg = Sndr::Logout(logout_message);
     self.deliver_msg(&msg);
-    let _ = self.socket.blow();
+    let _ = self.socket.send_data();
     let _ = self.socket.shutdown();
   }
 
-  /** Add the ID of a user to the list of users this user has blocked.
-  Returns true if the ID was added and false if that ID was already blocked.
-  */
   pub fn block_id(&mut self, id: u64) -> bool {
     let res = &(self.blocks).binary_search(&id);
     match res {
@@ -162,10 +141,6 @@ impl User {
     }
   }
 
-  /** Removes the ID of a user from the list of users this user has blocked.
-  Returns true if the supplied ID was indeed blocked and false if that user
-  wasn't being blocked.
-  */
   pub fn unblock_id(&mut self, id: u64) -> bool {
     let res = &(self.blocks).binary_search(&id);
     match res {
@@ -177,14 +152,10 @@ impl User {
     }
   }
 
-  /** Add the contents of an `Env` to the outgoing buffer to be sent on
-  subesequent calls to `.nudge()` (unless the message originates from a
-  blocked user).
-  */
   pub fn deliver(&mut self, env: &Env) {
     match env.source {
       End::User(id) => match &(self.blocks).binary_search(&id) {
-        Ok(_) => { /* User is blocked; do not deliver. */ }
+        Ok(_) => {} // do nothing
         Err(_) => {
           self.socket.enqueue(env.bytes());
         }
@@ -203,26 +174,19 @@ impl User {
   /** Attempt to write bytes from the outgoing buffer to the underlying
   socket. Any errors will be added to an internal `Vec` and not returned.
   */
-  pub fn nudge(&mut self) {
+  pub fn send(&mut self) {
     if self.socket.send_buff_size() > 0 {
-      if let Err(e) = self.socket.blow() {
+      if let Err(e) = self.socket.send_data() {
         self.errs.push(e);
       }
     }
   }
 
-  /** Encode a message directly to the outgoing buffer, and then continually
-  attempt to write bytes to the underlying socket until either the buffer
-  is empty or `limit` has passed.
-
-  Unlike the nonblocking sends, this _will_ return an error if encountered,
-  _or_ if `limit` passes without the buffer emptying.
-  */
   pub fn blocking_send(&mut self, msg: &Sndr, limit: Duration) -> Result<(), UserError> {
     self.deliver_msg(msg);
     let start_t = Instant::now();
     loop {
-      match self.socket.blow() {
+      match self.socket.send_data() {
         Err(e) => {
           let err = UserError::from_socket(&e);
           self.errs.push(e);
@@ -242,11 +206,9 @@ impl User {
     }
   }
 
-  /* Attempt to read data and decode a `Msg` from the underlying socket.
-  Any errors will be added to an internal `Vec` and not returned.
-  */
+  /// Attempt to read data and decode a `Msg` from the underlying socket.
   pub fn try_get(&mut self) -> Option<Rcvr> {
-    match self.socket.suck() {
+    match self.socket.read_data() {
       Err(e) => {
         self.errs.push(e);
         return None;
@@ -278,12 +240,6 @@ impl User {
     }
   }
 
-  /** Continually attempt to read and decode a `Msg` from the underlying
-  socket until either successful, or `limit` has passed.
-
-  Unlike the nonblocking reads, this _will_ return an error if encountered,
-  or if `limit` goes by without successfully decoding a `Msg`.
-  */
   pub fn blocking_get(&mut self, limit: Duration) -> Result<Rcvr, UserError> {
     match self.socket.try_get() {
       Err(e) => {
@@ -300,7 +256,7 @@ impl User {
 
     let start_t = Instant::now();
     loop {
-      match self.socket.suck() {
+      match self.socket.read_data() {
         Err(e) => {
           let err = UserError::from_socket(&e);
           self.errs.push(e);
@@ -331,4 +287,3 @@ impl User {
     }
   }
 }
-

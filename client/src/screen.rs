@@ -103,17 +103,17 @@ impl Screen {
     })
   }
 
-  /** Return the height of the main scrollback window. */
+  /// Return the height of the main scrollback window.
   pub fn get_main_height(&self) -> u16 {
     self.last_y_size - 2
   }
 
-  /** Return the number of `Line`s in the scrollback buffer. */
+  /// Return the number of `Line`s in the scrollback buffer.
   pub fn get_scrollback_length(&self) -> usize {
     self.lines.len()
   }
 
-  /** Trim the scrollback buffer to the latest `n` lines. */
+  /// Trim the scrollback buffer to the latest `n` lines.
   pub fn prune_scrollback(&mut self, n: usize) {
     if n >= self.lines.len() {
       return;
@@ -126,13 +126,13 @@ impl Screen {
     self.lines_dirty = true;
   }
 
-  /** Push the supplied line onto the end of the scrollback buffer. */
+  /// Push the supplied line onto the end of the scrollback buffer.
   pub fn push_line(&mut self, l: Line) {
     self.lines.push(l);
     self.lines_dirty = true;
   }
 
-  /** Populate the roster with the given slice of strings. */
+  /// Populate the roster with the given slice of strings.
   pub fn set_roster<T: AsRef<str>>(&mut self, items: &[T]) {
     self.roster = Vec::new();
     for s in items.iter() {
@@ -143,12 +143,12 @@ impl Screen {
     self.roster_dirty = true;
   }
 
-  /** Get number of characters in the input line. */
+  /// Get number of characters in the input line
   pub fn get_input_length(&self) -> usize {
     self.input.len()
   }
 
-  /** Add a `char` to the input line. */
+  /// Add a `char` to the input line.
   pub fn input_char(&mut self, ch: char) {
     if (self.input_ip as usize) >= self.input.len() {
       self.input.push(ch);
@@ -224,10 +224,8 @@ impl Screen {
     }
   }
 
-  /** Move the input cursor forward (or backward, for negative values)
-  `n_chars`, or to the end (or beginning), if the new position would
-  be out of range.
-  */
+  /// Move the input cursor by `n_chars` characters. Negative values move the
+  /// cursor to the left.
   pub fn input_skip_chars(&mut self, n_chars: i16) {
     let cur = self.input_ip as i16;
     let new = cur + n_chars;
@@ -304,9 +302,8 @@ impl Screen {
     }
   }
 
-  /** Scroll the main display up (or down, for negative values) `n_chars`,
-  or to the end (or beginning) if the new position would be out of range.
-  */
+  /// Scroll the input line by `n_chars` characters. Negative values scroll the
+  /// line down.
   pub fn scroll_lines(&mut self, n_chars: i16) {
     let cur = self.lines_scroll as i16;
     let mut new = cur + n_chars;
@@ -317,9 +314,7 @@ impl Screen {
     self.lines_dirty = true;
   }
 
-  /** Return the contents of the input line as a String and clear
-  the input line.
-  */
+  /// Return the contents of the input line as a String and clear the input line.
   pub fn pop_input(&mut self) -> Vec<char> {
     let mut new_v: Vec<char> = Vec::new();
     std::mem::swap(&mut new_v, &mut self.input);
@@ -393,9 +388,6 @@ impl Screen {
       }
     }
 
-    /* Check to see if we've scrolled past the end of the scrollback,
-    and if so, scroll us forward a little bit and keep
-    `self.lines_dirty == true` */
     if y > 1 && self.lines_scroll > 0 {
       let adjust: i16 = (y - 1) as i16;
       self.scroll_lines(-adjust);

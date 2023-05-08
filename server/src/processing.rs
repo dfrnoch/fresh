@@ -18,29 +18,29 @@ const ROOM_SIZE: usize = 64;
 struct Context<'a> {
   rid: u64,
   uid: u64,
-  umap: &'a mut HashMap<u64, User>,
-  ustr: &'a mut HashMap<String, u64>,
-  rmap: &'a mut HashMap<u64, Room>,
-  rstr: &'a mut HashMap<String, u64>,
+  user_map: &'a mut HashMap<u64, User>,
+  ustr_map: &'a mut HashMap<String, u64>,
+  room_map: &'a mut HashMap<u64, Room>,
+  rstr_map: &'a mut HashMap<String, u64>,
 }
 
 impl Context<'_> {
   fn gumap(&self, uid: u64) -> Result<&User, String> {
-    match self.umap.get(&uid) {
+    match self.user_map.get(&uid) {
       None => Err(format!("{:?}.gumap(&{}) returns None", &self, &uid)),
       Some(u) => Ok(u),
     }
   }
 
   fn grmap(&self, rid: u64) -> Result<&Room, String> {
-    match self.rmap.get(&rid) {
+    match self.room_map.get(&rid) {
       None => Err(format!("{:?}.grmap(&{}) return None", &self, &rid)),
       Some(r) => Ok(r),
     }
   }
 
   fn gumap_mut(&mut self, uid: u64) -> Result<&mut User, String> {
-    if let Some(u) = self.umap.get_mut(&uid) {
+    if let Some(u) = self.user_map.get_mut(&uid) {
       return Ok(u);
     }
     Err(format!(
@@ -50,7 +50,7 @@ impl Context<'_> {
   }
 
   fn grmap_mut(&mut self, rid: u64) -> Result<&mut Room, String> {
-    if let Some(r) = self.rmap.get_mut(&rid) {
+    if let Some(r) = self.room_map.get_mut(&rid) {
       return Ok(r);
     }
     Err(format!(
@@ -60,10 +60,10 @@ impl Context<'_> {
   }
 
   fn gustr(&self, u_idstr: &str) -> Option<u64> {
-    self.ustr.get(u_idstr).copied()
+    self.ustr_map.get(u_idstr).copied()
   }
   fn grstr(&self, r_idstr: &str) -> Option<u64> {
-    self.rstr.get(r_idstr).copied()
+    self.rstr_map.get(r_idstr).copied()
   }
 }
 
@@ -197,7 +197,7 @@ fn do_name(ctxt: &mut Context, cfg: &ServerConfig, new_candidate: String) -> Res
     return Ok(Envs::new1(env));
   }
 
-  if let Some(ouid) = ctxt.ustr.get(&new_str) {
+  if let Some(ouid) = ctxt.ustr_map.get(&new_str) {
     let ou = ctxt.gumap(*ouid)?;
     if *ouid != ctxt.uid {
       let env = Env::new(
@@ -234,9 +234,9 @@ fn do_name(ctxt: &mut Context, cfg: &ServerConfig, new_candidate: String) -> Res
       },
     );
   }
-  let _ = ctxt.ustr.remove(&old_idstr);
+  let _ = ctxt.ustr_map.remove(&old_idstr);
 
-  ctxt.ustr.insert(new_idstr, ctxt.uid);
+  ctxt.ustr_map.insert(new_idstr, ctxt.uid);
   Ok(Envs::new1(env))
 }
 
@@ -266,10 +266,10 @@ fn do_join(ctxt: &mut Context, cfg: &ServerConfig, room_name: String) -> Result<
   let tgt_rid = match ctxt.grstr(&collapsed) {
     Some(n) => n,
     None => {
-      let new_id = first_free_id(ctxt.rmap);
+      let new_id = first_free_id(ctxt.room_map);
       let new_room = Room::new(new_id, room_name.clone(), ctxt.uid);
-      ctxt.rstr.insert(collapsed, new_id);
-      ctxt.rmap.insert(new_id, new_room);
+      ctxt.rstr_map.insert(collapsed, new_id);
+      ctxt.room_map.insert(new_id, new_room);
       let mu = ctxt.gumap_mut(ctxt.uid)?;
 
       mu.deliver_msg(&Sndr::Info(&format!("You create room \"{}\".", &room_name)));
@@ -351,7 +351,7 @@ fn do_block(ctxt: &mut Context, user_name: String) -> Result<Envs, String> {
     );
     return Ok(Envs::new1(env));
   }
-  let ouid = match ctxt.ustr.get(&collapsed) {
+  let ouid = match ctxt.ustr_map.get(&collapsed) {
     None => {
       let env = Env::new(
         End::Server,
@@ -374,7 +374,7 @@ fn do_block(ctxt: &mut Context, user_name: String) -> Result<Envs, String> {
     return Ok(Envs::new1(env));
   }
 
-  let blocked_name = match ctxt.umap.get(&ouid) {
+  let blocked_name = match ctxt.user_map.get(&ouid) {
     None => {
       return Err(format!(
         "do_block(r {}, u {}): no target User {}",
@@ -413,7 +413,7 @@ fn do_unblock(ctxt: &mut Context, user_name: String) -> Result<Envs, String> {
     );
     return Ok(Envs::new1(env));
   }
-  let ouid = match ctxt.ustr.get(&collapsed) {
+  let ouid = match ctxt.ustr_map.get(&collapsed) {
     None => {
       let env = Env::new(
         End::Server,
@@ -436,7 +436,7 @@ fn do_unblock(ctxt: &mut Context, user_name: String) -> Result<Envs, String> {
     return Ok(Envs::new1(env));
   }
 
-  let blocked_name = match ctxt.umap.get(&ouid) {
+  let blocked_name = match ctxt.user_map.get(&ouid) {
     None => {
       return Err(format!(
         "do_unblock(r {}, u {}): no target User {}",
@@ -463,7 +463,7 @@ fn do_unblock(ctxt: &mut Context, user_name: String) -> Result<Envs, String> {
 /// In response to Msg::Logout(salutation)
 
 fn do_logout(ctxt: &mut Context, salutation: String) -> Result<Envs, String> {
-  let mr = match ctxt.rmap.get_mut(&ctxt.rid) {
+  let mr = match ctxt.room_map.get_mut(&ctxt.rid) {
     None => {
       return Err(format!(
         "do_logout(r {}, u {}): no Room {}",
@@ -474,7 +474,7 @@ fn do_logout(ctxt: &mut Context, salutation: String) -> Result<Envs, String> {
   };
   mr.leave(ctxt.uid);
 
-  let mut mu = match ctxt.umap.remove(&ctxt.uid) {
+  let mut mu = match ctxt.user_map.remove(&ctxt.uid) {
     None => {
       return Err(format!(
         "do_logout(r {}, u {}): no User {}",
@@ -483,7 +483,7 @@ fn do_logout(ctxt: &mut Context, salutation: String) -> Result<Envs, String> {
     }
     Some(u) => u,
   };
-  let _ = ctxt.ustr.remove(mu.get_idstr());
+  let _ = ctxt.ustr_map.remove(mu.get_idstr());
   mu.logout("You have logged out.");
 
   let dat: [&str; 2] = [mu.get_name(), &salutation];
@@ -535,7 +535,7 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
 
       for uid in r.get_users().iter().rev() {
         if *uid != op_id {
-          match ctxt.umap.get(uid) {
+          match ctxt.user_map.get(uid) {
             None => {
               warn!(
                 "do_query(r {}, u{} {:?}): no User {}",
@@ -554,7 +554,7 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
         altstr = format!("{} roster: ", r.get_name());
         append_comma_delimited_list(&mut altstr, &names_list);
       } else {
-        let op_name = match ctxt.umap.get(&op_id) {
+        let op_name = match ctxt.user_map.get(&op_id) {
           None => "[ ??? ]",
           Some(u) => u.get_name(),
         };
@@ -583,7 +583,7 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
 
     "who" => {
       let collapsed = collapse(&arg);
-      let matches = match_string(&collapsed, ctxt.ustr);
+      let matches = match_string(&collapsed, ctxt.ustr_map);
 
       let env: Env = if matches.is_empty() {
         Env::new(
@@ -613,7 +613,7 @@ fn do_query(ctxt: &mut Context, what: String, arg: String) -> Result<Envs, Strin
 
     "rooms" => {
       let collapsed = collapse(&arg);
-      let matches = match_string(&collapsed, ctxt.rstr);
+      let matches = match_string(&collapsed, ctxt.rstr_map);
       let env: Env = if matches.is_empty() {
         Env::new(
           End::Server,
@@ -722,7 +722,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         return Ok(Envs::new1(env));
       }
 
-      let ouid = match ctxt.ustr.get(&collapsed) {
+      let ouid = match ctxt.ustr_map.get(&collapsed) {
         None => {
           let env = Env::new(
             End::Server,
@@ -788,7 +788,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         return Ok(Envs::new1(env));
       }
 
-      let ouid = match ctxt.ustr.get(&collapsed) {
+      let ouid = match ctxt.ustr_map.get(&collapsed) {
         None => {
           let env = Env::new(
             End::Server,
@@ -803,7 +803,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         Some(n) => *n,
       };
 
-      let cur_r = match ctxt.rmap.get_mut(&ctxt.rid) {
+      let cur_r = match ctxt.room_map.get_mut(&ctxt.rid) {
         None => {
           return Err(format!(
             "do_op(r {}, u {}, {:?}): no Room {}",
@@ -822,7 +822,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         return Ok(Envs::new1(env));
       };
 
-      let ou = match ctxt.umap.get_mut(&ouid) {
+      let ou = match ctxt.user_map.get_mut(&ouid) {
         None => {
           return Err(format!(
             "do_op(r {}, u {}, {:?}): no target User {}",
@@ -890,7 +890,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         return Ok(Envs::new1(env));
       }
 
-      let ouid = match ctxt.ustr.get(&collapsed) {
+      let ouid = match ctxt.ustr_map.get(&collapsed) {
         None => {
           let env = Env::new(
             End::Server,
@@ -914,7 +914,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         return Ok(Envs::new1(env));
       }
 
-      let ku = match ctxt.umap.get_mut(&ouid) {
+      let ku = match ctxt.user_map.get_mut(&ouid) {
         None => {
           return Err(format!(
             "do_op(r {}, u {}, {:?}): no target User {}",
@@ -928,7 +928,7 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
       let mut cur_room_name = String::default();
 
       {
-        let cur_r = match ctxt.rmap.get_mut(&ctxt.rid) {
+        let cur_r = match ctxt.room_map.get_mut(&ctxt.rid) {
           None => {
             return Err(format!(
               "do_op(r {}, u {}, {:?}): no Room {}",
@@ -982,27 +982,27 @@ fn do_op(ctxt: &mut Context, op: RcvOp) -> Result<Envs, String> {
         }
       }
 
-      let lobby = ctxt.rmap.get_mut(&0).unwrap();
+      let lobby = ctxt.room_map.get_mut(&0).unwrap();
       lobby.join(ouid);
-      let dat: [&str; 2] = [ku.get_name(), lobby.get_name()];
+      let data: [&str; 2] = [ku.get_name(), lobby.get_name()];
       let to_lobby = Env::new(
         End::Server,
         End::Room(ctxt.rid),
         &Sndr::Misc {
           what: "join",
-          data: &dat,
+          data: &data,
           alt: &format!("{} joins {}.", ku.get_name(), lobby.get_name()),
         },
       );
       lobby.enqueue(to_lobby);
 
-      let dat: [&str; 2] = [ku.get_name(), &cur_room_name];
+      let data: [&str; 2] = [ku.get_name(), &cur_room_name];
       let env = Env::new(
         End::Server,
         End::Room(ctxt.rid),
         &Sndr::Misc {
           what: "kick_other",
-          data: &dat,
+          data: &data,
           alt: &format!("{} has been kicked from {}.", ku.get_name(), &cur_room_name),
         },
       );
@@ -1036,19 +1036,20 @@ pub fn process_room(
   let mut ctxt = Context {
     rid,
     uid: 0,
-    umap: user_map,
-    ustr: ustr_map,
-    rmap: room_map,
-    rstr: rstr_map,
+    user_map,
+    ustr_map,
+    room_map,
+    rstr_map,
   };
 
   let mut envs: Envs = Envs::new0();
   let mut logouts: SmallVec<[(u64, &str); LOGOUTS_SIZE]> = SmallVec::new();
 
   for uid in &uid_list {
-    let m: Rcvr;
+    // give it a better name
+    let rec: Rcvr;
     {
-      let mu = match ctxt.umap.get_mut(uid) {
+      let user = match ctxt.user_map.get_mut(uid) {
         None => {
           debug!("process_room({}): user {} doesn't exist", &rid, uid);
           continue;
@@ -1056,22 +1057,22 @@ pub fn process_room(
         Some(x) => x,
       };
 
-      let over_quota = mu.get_byte_quota() > cfg.byte_limit;
-      mu.drain_byte_quota(cfg.byte_tick);
-      if over_quota && mu.get_byte_quota() <= cfg.byte_limit {
+      let over_quota = user.get_byte_quota() > cfg.byte_limit;
+      user.drain_byte_quota(cfg.byte_tick);
+      if over_quota && user.get_byte_quota() <= cfg.byte_limit {
         let msg = Sndr::Err("You may send messages again.");
-        mu.deliver_msg(&msg);
+        user.deliver_msg(&msg);
       }
 
-      match mu.try_get() {
+      match user.try_get() {
         None => {
-          let last = mu.get_last_data_time();
+          let last = user.get_last_data_time();
           match current_time.checked_duration_since(last) {
             Some(x) if x > cfg.blackout_time_to_kick => {
               logouts.push((*uid, "Too long since server received data from the client."));
             }
             Some(x) if x > cfg.blackout_time_to_ping => {
-              mu.deliver_msg(&Sndr::Ping);
+              user.deliver_msg(&Sndr::Ping);
             }
             _ => {}
           }
@@ -1079,10 +1080,10 @@ pub fn process_room(
         }
         Some(msg) => {
           if !over_quota {
-            m = msg;
-            if mu.get_byte_quota() > cfg.byte_limit {
+            rec = msg;
+            if user.get_byte_quota() > cfg.byte_limit {
               let msg = Sndr::Err("You have exceeded your data quota and your messages will be ignored for a short time.");
-              mu.deliver_msg(&msg);
+              user.deliver_msg(&msg);
             }
           } else {
             continue;
@@ -1090,8 +1091,8 @@ pub fn process_room(
         }
       }
 
-      if mu.has_errors() {
-        let e = mu.get_errors();
+      if user.has_errors() {
+        let e = user.get_errors();
         warn!("User {} being logged out for error(s): {}", uid, &e);
         logouts.push((*uid, "Communication error."));
       }
@@ -1099,7 +1100,7 @@ pub fn process_room(
 
     ctxt.uid = *uid;
 
-    let pres = match m {
+    let pres = match rec {
       Rcvr::Text { lines: l, .. } => do_text(&mut ctxt, l),
       Rcvr::Priv { who, text } => do_priv(&mut ctxt, who, text),
       Rcvr::Name(new_candidate) => do_name(&mut ctxt, cfg, new_candidate),
@@ -1126,18 +1127,18 @@ pub fn process_room(
   }
 
   for (uid, errmsg) in logouts.iter() {
-    if let Some(mut mu) = ctxt.umap.remove(uid) {
-      let _ = ctxt.ustr.remove(mu.get_idstr());
+    if let Some(mut user) = ctxt.user_map.remove(uid) {
+      ctxt.ustr_map.remove(user.get_idstr());
       let msg = Sndr::Logout(errmsg);
-      mu.deliver_msg(&msg);
-      let dat: [&str; 2] = [mu.get_name(), "[ disconnected by server ]"];
+      user.deliver_msg(&msg);
+      let dat: [&str; 2] = [user.get_name(), "[ disconnected by server ]"];
       let env = Env::new(
         End::Server,
         End::Room(ctxt.rid),
         &Sndr::Misc {
           what: "leave",
           data: &dat,
-          alt: &format!("{} has been disconnected from the server.", mu.get_name()),
+          alt: &format!("{} has been disconnected from the server.", user.get_name()),
         },
       );
       envs.as_mut().push(env);
@@ -1152,14 +1153,14 @@ pub fn process_room(
   // Change room operator if current op is no longer in room.
 
   if rid != 0 {
-    let mr = ctxt.rmap.get_mut(&rid).unwrap();
-    let op_id = mr.get_op();
-    let op_still_here = mr.get_users().contains(&op_id);
+    let room = ctxt.room_map.get_mut(&rid).unwrap();
+    let op_id = room.get_op();
+    let op_still_here = room.get_users().contains(&op_id);
     if !op_still_here {
-      if let Some(pnid) = mr.get_users().first() {
-        if let Some(u) = ctxt.umap.get(pnid) {
+      if let Some(pnid) = room.get_users().first() {
+        if let Some(u) = ctxt.user_map.get(pnid) {
           let nid = *pnid;
-          mr.set_op(nid);
+          room.set_op(nid);
           let env = Env::new(
             End::Server,
             End::Room(rid),
@@ -1172,19 +1173,19 @@ pub fn process_room(
   }
 
   {
-    let r = ctxt.rmap.get_mut(&rid).unwrap();
+    let room = ctxt.room_map.get_mut(&rid).unwrap();
     for (uid, _) in logouts.drain(..) {
-      r.leave(uid);
+      room.leave(uid);
     }
-    r.deliver_inbox(ctxt.umap);
+    room.deliver_inbox(ctxt.user_map);
     for env in envs.as_ref() {
-      r.deliver(env, ctxt.umap);
+      room.deliver(env, ctxt.user_map);
     }
     uid_list.clear();
-    uid_list.extend_from_slice(r.get_users());
+    uid_list.extend_from_slice(room.get_users());
     for uid in uid_list.iter_mut() {
-      if let Some(mu) = user_map.get_mut(uid) {
-        mu.nudge();
+      if let Some(user) = user_map.get_mut(uid) {
+        user.send();
       }
     }
   }

@@ -43,9 +43,6 @@ impl Room {
     &(self.idstr)
   }
 
-  /** Deliver an `Env` to the appropriate `End`: either the entire
-  `Room`, or if its `dest` field is `End::User(n)`, just that user.
-  */
   pub fn deliver(&self, env: &Env, uid_hash: &mut HashMap<u64, User>) {
     match env.dest {
       End::User(uid) => {
@@ -63,14 +60,11 @@ impl Room {
     }
   }
 
-  /** Push an `Env` on the queue to be delivered next time
-  `.deliver_inbox(...)` (below) is called.
-  */
   pub fn enqueue(&mut self, env: Env) {
     self.inbox.push(env);
   }
 
-  /** Deliver all of the `Env`s that have been `.enqueue(...)`'d (above). */
+  /// Deliver all the `Env`s in the queue.
   pub fn deliver_inbox(&mut self, uid_hash: &mut HashMap<u64, User>) {
     for env in self.inbox.drain(..) {
       match env.dest {
@@ -90,12 +84,10 @@ impl Room {
     }
   }
 
-  /// Add the given user ID to the list of `User`s "in" the `Room`.
   pub fn join(&mut self, uid: u64) {
     self.users.push(uid);
   }
-  /** Remove the given user ID (if present) from the list of `User`s that
-  are "in" the `Room` */
+
   pub fn leave(&mut self, uid: u64) {
     self.users.retain(|n| *n != uid);
   }
@@ -105,38 +97,27 @@ impl Room {
     self.bans.push(uid);
   }
 
-  /** Add the given user ID to the list of `User`s "invited" to the
-  `Room`, meaning that they may enter even if the operator has
-  `.closed` it.
-
-  This also removes the given user ID from the "banned" (see `.ban(...)`,
-  above) list, if present.
-  */
   pub fn invite(&mut self, uid: u64) {
     self.bans.retain(|n| *n != uid);
     self.invites.push(uid);
   }
 
-  /** Set the `User` with the given user ID to be the `Room`'s operator. */
   pub fn set_op(&mut self, uid: u64) {
     self.op = uid;
   }
-  /** Return the user ID of the `Room`'s current operator. */
+
   pub fn get_op(&self) -> u64 {
     self.op
   }
 
-  /** Return the list of user IDs of `User`s in the `Room`. */
   pub fn get_users(&self) -> &[u64] {
     &(self.users)
   }
 
-  /// 
   pub fn is_banned(&self, uid: &u64) -> bool {
     self.bans.contains(uid)
   }
 
-  /// Return whether the `User` with the given ID is "invited"
   pub fn is_invited(&self, uid: &u64) -> bool {
     self.invites.contains(uid)
   }

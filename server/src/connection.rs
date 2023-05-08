@@ -2,20 +2,20 @@ use common::{proto::Rcvr, socket::Socket, user::User};
 use log::debug;
 use std::{net::TcpListener, sync::mpsc, time::Duration};
 
-pub fn initial_negotiation(u: &mut User) -> Result<(), String> {
-  match u.blocking_get(Duration::from_secs(5)) {
+pub fn initial_negotiation(user: &mut User) -> Result<(), String> {
+  match user.blocking_get(Duration::from_secs(5)) {
     Err(e) => {
       let err_str = format!("Error reading initial \"Name\" message: {}", e);
-      u.logout(&err_str);
+      user.logout(&err_str);
       Err(err_str)
     }
     Ok(m) => match m {
       Rcvr::Name(new_name) => {
-        u.set_name(&new_name);
+        user.set_name(&new_name);
         Ok(())
       }
       x => {
-        u.logout("Protocol error: Initial message should be of type \"Name\".");
+        user.logout("Protocol error: Initial message should be of type \"Name\".");
         Err(format!("Bad initial message: {:?}", &x))
       }
     },
@@ -43,17 +43,17 @@ pub fn listen(addr: String, tx: mpsc::Sender<User>) {
           Ok(x) => x,
         };
 
-        let mut u = User::new(new_sock, new_user_id);
-        match initial_negotiation(&mut u) {
+        let mut user = User::new(new_sock, new_user_id);
+        match initial_negotiation(&mut user) {
           Err(e) => {
             debug!("listen(): Error negotiating initial protocol: {}", &e);
           }
           Ok(()) => {
             debug!(
               "listen(): Sending new client \"{}\" through channel.",
-              u.get_name()
+              user.get_name()
             );
-            if let Err(e) = tx.send(u) {
+            if let Err(e) = tx.send(user) {
               debug!("listen(): Error sending client through channel: {}", &e);
             } else {
               new_user_id += 1;

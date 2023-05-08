@@ -84,15 +84,15 @@ pub struct ServerConfig {
 
 impl ServerConfig {
   pub fn configure() -> ServerConfig {
-    let mut pathz: Vec<PathBuf> = Vec::new();
-    pathz.push(PathBuf::from(SERVER_NAME));
+    let mut paths: Vec<PathBuf> = Vec::new();
+    paths.push(PathBuf::from(SERVER_NAME));
     {
       let mut p = default_config_dir();
       p.push(SERVER_NAME);
-      pathz.push(p);
+      paths.push(p);
     }
 
-    let cfgf: ServerConfigFile = match read_first_to_string(&pathz) {
+    let cfg_file: ServerConfigFile = match read_first_to_string(&paths) {
       Ok(s) => match toml::from_str(&s) {
         Ok(x) => x,
         Err(e) => {
@@ -107,7 +107,7 @@ impl ServerConfig {
       }
     };
 
-    let logl: LevelFilter = match cfgf.log_level {
+    let logl: LevelFilter = match cfg_file.log_level {
       None => LOG_LEVEL,
       Some(0) => LevelFilter::Off,
       Some(1) => LevelFilter::Error,
@@ -122,22 +122,28 @@ impl ServerConfig {
     };
 
     ServerConfig {
-      address: cfgf.address.unwrap_or_else(|| ADDR.to_string()),
-      min_tick: Duration::from_millis(cfgf.tick_ms.unwrap_or(SERVER_TICK)),
+      address: cfg_file.address.unwrap_or_else(|| ADDR.to_string()),
+      min_tick: Duration::from_millis(cfg_file.tick_ms.unwrap_or(SERVER_TICK)),
       blackout_time_to_ping: Duration::from_millis(
-        cfgf.blackout_to_ping_ms.unwrap_or(BLACKOUT_TO_PING),
+        cfg_file.blackout_to_ping_ms.unwrap_or(BLACKOUT_TO_PING),
       ),
       blackout_time_to_kick: Duration::from_millis(
-        cfgf.blackout_to_kick_ms.unwrap_or(BLACKOUT_TO_KICK),
+        cfg_file.blackout_to_kick_ms.unwrap_or(BLACKOUT_TO_KICK),
       ),
-      max_user_name_length: cfgf.max_user_name_length.unwrap_or(ROSTER_WIDTH as usize),
-      max_room_name_length: cfgf.max_room_name_length.unwrap_or(ROSTER_WIDTH as usize),
-      lobby_name: cfgf.lobby_name.unwrap_or_else(|| LOBBY_NAME.to_string()),
-      welcome: cfgf.welcome.unwrap_or_else(|| WELCOME.to_string()),
-      log_file: cfgf.log_file.unwrap_or_else(|| SERVER_LOG.to_string()),
+      max_user_name_length: cfg_file
+        .max_user_name_length
+        .unwrap_or(ROSTER_WIDTH as usize),
+      max_room_name_length: cfg_file
+        .max_room_name_length
+        .unwrap_or(ROSTER_WIDTH as usize),
+      lobby_name: cfg_file
+        .lobby_name
+        .unwrap_or_else(|| LOBBY_NAME.to_string()),
+      welcome: cfg_file.welcome.unwrap_or_else(|| WELCOME.to_string()),
+      log_file: cfg_file.log_file.unwrap_or_else(|| SERVER_LOG.to_string()),
       log_level: logl,
-      byte_limit: cfgf.byte_limit.unwrap_or(BYTE_LIMIT),
-      byte_tick: cfgf.bytes_per_tick.unwrap_or(BYTE_TICK),
+      byte_limit: cfg_file.byte_limit.unwrap_or(BYTE_LIMIT),
+      byte_tick: cfg_file.bytes_per_tick.unwrap_or(BYTE_TICK),
     }
   }
 }
@@ -168,18 +174,18 @@ pub struct ClientConfig {
 
 impl ClientConfig {
   pub fn configure(path: Option<String>) -> Result<ClientConfig, String> {
-    let mut pathz: Vec<PathBuf> = Vec::new();
+    let mut paths: Vec<PathBuf> = Vec::new();
     if let Some(p) = path {
-      pathz.push(PathBuf::from(&p));
+      paths.push(PathBuf::from(&p));
     }
-    pathz.push(PathBuf::from(CLIENT_NAME));
+    paths.push(PathBuf::from(CLIENT_NAME));
     {
       let mut p = default_config_dir();
       p.push(CLIENT_NAME);
-      pathz.push(p);
+      paths.push(p);
     }
 
-    let f: ClientConfigFile = match read_first_to_string(&pathz) {
+    let f: ClientConfigFile = match read_first_to_string(&paths) {
       Ok(s) => match toml::from_str(&s) {
         Ok(x) => x,
         Err(e) => {
