@@ -195,9 +195,7 @@ impl User {
     }
   }
 
-  /** Encode a `Msg` directly into the outgoing buffer, regardless of
-  origin.
-  */
+  /// Add the contents of an `Sndr` to the outgoing buffer.
   pub fn deliver_msg(&mut self, msg: &Sndr) {
     self.socket.enqueue(&(msg.bytes()));
   }

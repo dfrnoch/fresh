@@ -17,8 +17,8 @@ const SERVER_TICK: u64 = 500; // server, min time through main loop
 const BYTE_LIMIT: usize = 512; // server user rate limiting byte quota
 const BYTE_TICK: usize = 6; // server byte quota dissipation per tick
 const LOG_LEVEL: LevelFilter = LevelFilter::Warn; // server log level
-const BLACKOUT_TO_PING: u64 = 10000; /* msec since data received from a client that server will send a ping */
-const BLACKOUT_TO_KICK: u64 = 20000; /* to confirm connection or log the client off for unreachability */
+const BLACKOUT_TO_PING: u64 = 10000; // msec since data received from a client that server will send a ping
+const BLACKOUT_TO_KICK: u64 = 20000; // to confirm connection or log the client off for unreachability
 const CLIENT_TICK: u64 = 100; // client time through main loop
 const READ_SIZE: usize = 1024; // client number of bytes per read attempt
 const ROSTER_WIDTH: u16 = 24; // Also server max user name and max room name lengths
@@ -34,9 +34,7 @@ fn default_config_dir() -> PathBuf {
   }
 }
 
-/** Attempt to read from a series of files, returning the contents of the
-first successful attempt.
-*/
+/// Attempts to read the first file in the list of paths, returning the contents as a String
 fn read_first_to_string(ps: &[PathBuf]) -> Result<String, String> {
   let mut misses = String::from("Couldn't read from");
   for p in ps.iter() {

@@ -323,7 +323,6 @@ pub struct Env {
 }
 
 impl<'a> Env {
-  /** Encode and wrap a `Sndr`. */
   pub fn new(from: End, to: End, msg: &'a Sndr) -> Env {
     Env {
       source: from,
@@ -332,12 +331,10 @@ impl<'a> Env {
     }
   }
 
-  /** Get a reference to the encoded bytes. */
   pub fn bytes(&self) -> &[u8] {
     &self.data
   }
 
-  /** Consume the `Env`, returning the underlying vector of bytes. */
   pub fn into_bytes(self) -> Vec<u8> {
     self.data
   }

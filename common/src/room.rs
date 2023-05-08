@@ -131,14 +131,12 @@ impl Room {
     &(self.users)
   }
 
-  /** Return whether the `User` with the given ID is "banned" (see
-  `.ban(...)`, above). */
+  /// 
   pub fn is_banned(&self, uid: &u64) -> bool {
     self.bans.contains(uid)
   }
 
-  /** Return whether the `User` with the given ID is "invited" (see
-  `.invite(...)`, above). */
+  /// Return whether the `User` with the given ID is "invited"
   pub fn is_invited(&self, uid: &u64) -> bool {
     self.invites.contains(uid)
   }

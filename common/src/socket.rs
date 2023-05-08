@@ -197,9 +197,8 @@ impl Socket {
     }
   }
 
-  /** Queues up the supplied `data` at the end of  the send buffer, then
-  blockingly attemps to `.blow()` every `tick` until the send buffer is empty.
-  */
+  /// Attempts to send `data` to the remote endpoint. If the send buffer
+  /// is full, this will block until it's not.
   pub fn blocking_send(
     &mut self,
     data: &[u8],
@@ -214,13 +213,12 @@ impl Socket {
     }
   }
 
-  /** Returns how many bytes are still queued up to be `.blow()`n. */
+  /// Returns how many bytes are currently in the send buffer.
   pub fn send_buff_size(&self) -> usize {
     self.send_buff.len()
   }
 
-  /** Returns how many bytes are sitting in the receive buffer waiting
-  to get decoded. */
+  /// Returns how many bytes are currently in the receive buffer.
   pub fn recv_buff_size(&self) -> usize {
     self.current.len()
   }

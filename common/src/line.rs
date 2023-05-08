@@ -16,9 +16,7 @@ lazy_static! {
   };
 }
 
-/** A `Style` is just a wrapper for a string containing the ANSI codes to
-write text in a given style to the terminal.
-*/
+/// A wrapper around a string that can be formatted with ANSI escape codes.
 #[derive(Clone)]
 pub struct Style(String);
 
@@ -51,7 +49,7 @@ impl std::ops::Deref for Style {
   }
 }
 
-/** This struct is used in the `Line` internals to store formatting info. */
+/// This struct is used in the `Line` internals to store formatting info.
 #[derive(Clone)]
 struct Fmtr {
   idx: usize,
@@ -78,12 +76,10 @@ pub struct Line {
 }
 
 impl Line {
-  /** Return the number of characters in the `Line`. */
   pub fn len(&self) -> usize {
     self.chars.len()
   }
 
-  /** Add a chunk of unformatted text to the end of the `Line`. */
   pub fn push<T: AsRef<str>>(&mut self, s: T) {
     self.width = None;
     self.nchars = None;
@@ -92,7 +88,7 @@ impl Line {
     }
   }
 
-  /** Add a chunk of _formatted_ text to the end of the `Line`. */
+  /// Add a chunk of _formatted_ text to the end of the `Line`.
   pub fn pushf<T: AsRef<str>>(&mut self, s: T, styl: &Style) {
     self.width = None;
     self.nchars = None;
@@ -108,7 +104,7 @@ impl Line {
     self.fdirs.push(Fmtr::new(n, &RESET));
   }
 
-  /** Append a copy of the contents of `other` to `self`. */
+  /// Append a copy of the contents of `other` to `self`.
   pub fn append(&mut self, other: &Self) {
     self.width = None;
     self.nchars = None;
