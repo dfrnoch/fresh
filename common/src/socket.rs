@@ -44,44 +44,23 @@ impl std::fmt::Display for SocketError {
 
 impl Error for SocketError {}
 
-/* This is a hacky way of turning certain helpful-to-a-human but
-not-so-helpful-to-a-machine error messages returned by `serde_json`'s
-decoding functions.
-
-If a chunk of data has extra characters after the end of a syntactially-
-correct JSON object, `serde_json` will return an `Error` with the one-based
-line and column offsets of the first problematic characters. This function
-grovels through the stream of bytes, counting characters and keeping track
-of newlines, to determine the actual _byte offset_ of said characters. That
-way, the complete JSON object can be sliced off and decoded, leaving the
-remaining data in the buffer.
-*/
 fn get_actual_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
   let line = e.line() - 1;
   let col = e.column() - 1;
   let mut line_n: usize = 0;
-  let mut offs: Option<usize> = None;
-  let mut n: usize = 0;
-  loop {
+
+  let offs = dat.iter().enumerate().find_map(|(n, b)| {
     if line_n < line {
-      match dat.get(n) {
-        None => break,
-        Some(b) => {
-          if *b == NEWLINE {
-            line_n += 1;
-          }
-        }
+      if *b == NEWLINE {
+        line_n += 1;
       }
-      n += 1;
+      None
     } else {
-      offs = Some(n + col);
-      break;
+      Some(n + col)
     }
-  }
-  match offs {
-    None => Err("Overran buffer seeking error location."),
-    Some(v) => Ok(v),
-  }
+  });
+
+  offs.ok_or("Overran buffer seeking error location.")
 }
 
 pub struct Socket {
@@ -176,15 +155,9 @@ impl Socket {
       },
     }
 
-    let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current[..offs]);
-    match maybe_msg {
-      Ok(m) => {
-        let temp = (self.current[offs..]).to_vec();
-        self.current = temp;
-        Ok(Some(m))
-      }
-      Err(e) => Err(SocketError::from_err(4, &e)),
-    }
+    let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current[..offs]).map(Some);
+    self.current = self.current.split_off(offs);
+    maybe_msg.map_err(|e| SocketError::from_err(4, &e))
   }
 
   /** Copies `data` to the outgoing send buffer, to be sent on subesequent
@@ -206,24 +179,18 @@ impl Socket {
     let res = self.stream.write(&self.send_buff);
 
     match res {
-      Err(e) => {
-        if e.kind() == std::io::ErrorKind::Interrupted {
-          Ok(self.send_buff.len())
-        } else {
-          Err(SocketError::from_err(5, &e))
-        }
-      }
+      Err(e) if e.kind() == std::io::ErrorKind::Interrupted => Ok(self.send_buff.len()),
+      Err(e) => Err(SocketError::from_err(5, &e)),
       Ok(n) => {
         if n == self.send_buff.len() {
-          if let Err(e) = self.stream.flush() {
-            Err(SocketError::from_err(6, &e))
-          } else {
-            self.send_buff.clear();
-            Ok(0)
-          }
+          self
+            .stream
+            .flush()
+            .map_err(|e| SocketError::from_err(6, &e))?;
+          self.send_buff.clear();
+          Ok(0)
         } else {
-          let temp = (self.send_buff[n..]).to_vec();
-          self.send_buff = temp;
+          self.send_buff = self.send_buff.split_off(n);
           Ok(self.send_buff.len())
         }
       }

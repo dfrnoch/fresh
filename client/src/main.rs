@@ -4,22 +4,22 @@ mod message;
 mod screen;
 mod util;
 
-use clap::Parser;
-use connection::Globals;
-use lazy_static::lazy_static;
-use log::{debug, error};
-use std::io::stdout;
-use std::time::Instant;
-
 use crate::connection::connect;
 use crate::input::{process_user_typing, write_mode_line, Mode};
 use crate::message::process_msg;
 use crate::screen::Screen;
 use crate::util::styles::HIGHLIGHT;
+
+use clap::Parser;
 use common::config::ClientConfig;
 use common::line::Line;
 use common::proto::Sndr;
 use common::socket::Socket;
+use connection::Globals;
+use lazy_static::lazy_static;
+use log::{debug, error};
+use std::io::stdout;
+use std::time::Instant;
 
 lazy_static! {
   static ref PING: Vec<u8> = Sndr::Ping.bytes();

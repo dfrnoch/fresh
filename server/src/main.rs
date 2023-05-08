@@ -8,6 +8,7 @@ use common::config::ServerConfig;
 use common::proto::*;
 use common::room::Room;
 use common::user::*;
+use common::util::collapse;
 use log::{debug, warn};
 use simplelog::WriteLogger;
 use std::collections::HashMap;
@@ -46,6 +47,7 @@ fn main() {
   let mut lobby: Room = Room::new(0, cfg.lobby_name.clone(), 0);
   lobby.leave(0);
   room_map.insert(0, lobby);
+  rstr_map.insert(collapse(&cfg.lobby_name), 0); //this took me a while to figure out :'(
 
   let (usender, urecvr) = mpsc::channel::<User>();
   thread::spawn(move || {

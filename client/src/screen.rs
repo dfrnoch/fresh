@@ -231,17 +231,19 @@ impl Screen {
   pub fn input_skip_chars(&mut self, n_chars: i16) {
     let cur = self.input_ip as i16;
     let new = cur + n_chars;
-    if new < 0 {
-      self.input_ip = 0;
+    let ilen = self.input.len() as u16;
+
+    self.input_ip = if new < 0 {
+      0
     } else {
-      let new: u16 = new as u16;
-      let ilen = self.input.len() as u16;
+      let new = new as u16;
       if new > ilen {
-        self.input_ip = ilen;
+        ilen
       } else {
-        self.input_ip = new;
+        new
       }
-    }
+    };
+
     self.input_dirty = true;
   }
 

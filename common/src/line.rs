@@ -201,15 +201,8 @@ impl Line {
   }
 
   pub fn lines(&mut self, width: usize) -> &[String] {
-    match self.width {
-      None => {
-        self.wrap(width);
-      }
-      Some(n) => {
-        if n != width {
-          self.wrap(width);
-        }
-      }
+    if self.width.map_or(true, |n| n != width) {
+      self.wrap(width);
     }
 
     &self.render
@@ -217,27 +210,22 @@ impl Line {
 
   fn render_n_chars(&mut self, n: usize) {
     let mut s = String::default();
-    let mut fmt_iter = self.fdirs.iter();
-    let mut nextf = fmt_iter.next();
+    let mut fmt_iter = self.fdirs.iter().peekable();
 
     for (i, c) in self.chars[..n].iter().enumerate() {
-      while match nextf {
-        None => false,
-        Some(f) => {
-          if f.idx == i {
-            s.push_str(&f.code);
-            nextf = fmt_iter.next();
-            true
-          } else {
-            false
-          }
+      while let Some(f) = fmt_iter.peek() {
+        if f.idx == i {
+          s.push_str(&f.code);
+          fmt_iter.next();
+        } else {
+          break;
         }
-      } {}
+      }
       s.push(*c);
     }
-    while let Some(f) = nextf {
+
+    while let Some(f) = fmt_iter.next() {
       s.push_str(&f.code);
-      nextf = fmt_iter.next();
     }
 
     self.nchars = Some(n);
@@ -245,21 +233,10 @@ impl Line {
   }
 
   pub fn first_n_chars(&mut self, n: usize) -> &str {
-    let tgt = if n < self.chars.len() {
-      n
-    } else {
-      self.chars.len()
-    };
+    let tgt = n.min(self.chars.len());
 
-    match self.nchars {
-      None => {
-        self.render_n_chars(tgt);
-      }
-      Some(i) => {
-        if tgt != i {
-          self.render_n_chars(tgt);
-        }
-      }
+    if self.nchars.map_or(true, |i| tgt != i) {
+      self.render_n_chars(tgt);
     }
 
     &self.nchars_render

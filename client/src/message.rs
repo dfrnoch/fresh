@@ -76,7 +76,7 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         sl.push("* ");
         if name.as_str() == gv.uname.as_str() {
           sl.pushf("You", &BOLD);
-          sl.push(" join ");
+          sl.push(" joined ");
 
           // Update the room name in the status bar.
           gv.rname = room.to_string();
@@ -178,6 +178,7 @@ pub fn process_msg(m: Rcvr, scrn: &mut Screen, gv: &mut Globals) -> Result<(), S
         if data.is_empty() {
           return Err(format!("Incomplete data: {:?}", &m));
         }
+
         scrn.set_roster(data);
       }
 
@@ -268,7 +269,7 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
         .collect();
 
       /* Tokenize the resulting string. */
-      let cmd_toks = tokenize_the_whitespace_too(&cmd_line);
+      let cmd_toks = tokenize_whitespace(&cmd_line);
       let cmd = cmd_toks[0].to_lowercase();
 
       match cmd.as_str() {
@@ -401,37 +402,25 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
   });
 }
 
-/** Split a vector of alternating whitespance-and-non tokens (as returned
-by `tokenize_the_whitespace_too(...)` (above) into a vector of `n_cmds`
-"command" words and an "arg" `String` made of the non-command tokens
-concatenated.
-*/
+/// Split a vector of &str into a vector of commands and a single argument.
 fn split_command_toks<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a str>, String), ()> {
-  if n_cmds == 0 {
-    return Err(());
-  }
-  if toks.len() < (2 * n_cmds) - 1 {
+  if n_cmds == 0 || toks.len() < (2 * n_cmds) - 1 {
     return Err(());
   }
 
-  let mut cmds: Vec<&'a str> = Vec::new();
-  let mut arg: String = String::default();
-
-  let mut n: usize = 0;
-  for _ in 0..n_cmds {
-    cmds.push(toks[n]);
-    n += 2;
-  }
-  while n < toks.len() {
-    arg.push_str(toks[n]);
-    n += 1;
-  }
+  let cmds: Vec<&'a str> = toks.iter().take(n_cmds * 2).step_by(2).copied().collect();
+  let arg: String = toks
+    .iter()
+    .skip(n_cmds * 2)
+    .cloned()
+    .collect::<Vec<&str>>()
+    .join("");
 
   Ok((cmds, arg))
 }
 
-/** Divide &str s into alternating chunks of whitespace and non-whitespace. */
-fn tokenize_the_whitespace_too(s: &str) -> Vec<&str> {
+/// Split a string into a vector of &str, splitting on whitespace.
+fn tokenize_whitespace(s: &str) -> Vec<&str> {
   let mut v: Vec<&str> = Vec::new();
 
   let mut change: usize = 0;

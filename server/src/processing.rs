@@ -1042,7 +1042,7 @@ pub fn process_room(
     rstr: rstr_map,
   };
 
-  let mut envz: Envs = Envs::new0();
+  let mut envs: Envs = Envs::new0();
   let mut logouts: SmallVec<[(u64, &str); LOGOUTS_SIZE]> = SmallVec::new();
 
   for uid in &uid_list {
@@ -1114,11 +1114,10 @@ pub fn process_room(
 
     match pres {
       Err(e) => {
-        #[cfg(debug_assertions)]
         trace!("{}", &e);
       }
       Ok(mut v) => {
-        let evz = envz.as_mut();
+        let evz = envs.as_mut();
         for env in v.as_mut().drain(..) {
           evz.push(env);
         }
@@ -1141,7 +1140,7 @@ pub fn process_room(
           alt: &format!("{} has been disconnected from the server.", mu.get_name()),
         },
       );
-      envz.as_mut().push(env);
+      envs.as_mut().push(env);
     } else {
       warn!(
         "process_room({} ...): logouts.drain(): no User {}",
@@ -1166,7 +1165,7 @@ pub fn process_room(
             End::Room(rid),
             &Sndr::Info(&format!("{} is now the Room operator.", u.get_name())),
           );
-          envz.as_mut().push(env);
+          envs.as_mut().push(env);
         }
       }
     }
@@ -1178,7 +1177,7 @@ pub fn process_room(
       r.leave(uid);
     }
     r.deliver_inbox(ctxt.umap);
-    for env in envz.as_ref() {
+    for env in envs.as_ref() {
       r.deliver(env, ctxt.umap);
     }
     uid_list.clear();
