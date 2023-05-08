@@ -132,31 +132,24 @@ impl Line {
 
     for (i, c) in self.chars.iter().enumerate() {
       if x == tgt {
-        if i - tgt >= lws {
-          wraps.push(i);
-          x = 0;
-        } else {
-          wraps.push(lws);
-          x = i - lws;
-        }
+        wraps.push(if i - tgt >= lws { i } else { lws });
+        x = i - lws;
         write_leading_ws = false;
+      }
+
+      if (x > 0 || write_leading_ws) || !c.is_whitespace() {
+        x += 1;
       }
 
       if c.is_whitespace() {
         lws = i;
-        if x > 0 || write_leading_ws {
-          x += 1;
-        }
-      } else {
-        x += 1;
       }
     }
 
     trace!("wraps at: {:?}", &wraps);
 
     self.render = Vec::with_capacity(wraps.len() + 1);
-    let mut fmt_iter = self.fdirs.iter();
-    let mut nextf = fmt_iter.next();
+    let mut fmt_iter = self.fdirs.iter().peekable();
     let mut cur_line = String::with_capacity(tgt);
     write_leading_ws = true;
     let mut wrap_idx: usize = 0;
@@ -164,39 +157,33 @@ impl Line {
 
     for (i, c) in self.chars.iter().enumerate() {
       if wrap_idx < wraps.len() && wraps[wrap_idx] == i {
-        self.render.push(cur_line);
-        cur_line = String::with_capacity(tgt);
+        self.render.push(cur_line.clone());
+        cur_line.clear();
         write_leading_ws = false;
         wrap_idx += 1;
         line_len = 0;
       }
 
-      while match nextf {
-        None => false,
-        Some(f) => {
-          if f.idx == i {
-            cur_line.push_str(&f.code);
-            nextf = fmt_iter.next();
-            true
-          } else {
-            false
-          }
+      while let Some(f) = fmt_iter.peek() {
+        if f.idx == i {
+          cur_line.push_str(&f.code);
+          fmt_iter.next();
+        } else {
+          break;
         }
-      } {}
+      }
 
       if line_len > 0 || write_leading_ws || !c.is_whitespace() {
         cur_line.push(*c);
-        line_len += 1
+        line_len += 1;
       }
     }
 
-    while let Some(f) = nextf {
+    for f in fmt_iter {
       cur_line.push_str(&f.code);
-      nextf = fmt_iter.next();
     }
 
     self.render.push(cur_line);
-
     self.width = Some(tgt);
   }
 
@@ -224,7 +211,7 @@ impl Line {
       s.push(*c);
     }
 
-    while let Some(f) = fmt_iter.next() {
+    for f in fmt_iter {
       s.push_str(&f.code);
     }
 

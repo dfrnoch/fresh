@@ -273,6 +273,32 @@ pub fn respond_to_user_input(ipt: Vec<char>, scrn: &mut Screen, gv: &mut Globals
       let cmd = cmd_toks[0].to_lowercase();
 
       match cmd.as_str() {
+        "help" => {
+          let mut sl = Line::default();
+          sl.pushf("# ", &DIM_BOLD);
+          sl.pushf("Commands:", &DIM);
+          scrn.push_line(sl);
+          sl = Line::default();
+          sl.pushf("# ", &DIM_BOLD);
+          sl.pushf("  /quit", &DIM);
+          sl.push(" - quit the program");
+          scrn.push_line(sl);
+          sl = Line::default();
+          sl.pushf("# ", &DIM_BOLD);
+          sl.pushf("  /name <name>", &DIM);
+          sl.push(" - change your name");
+          scrn.push_line(sl);
+          sl = Line::default();
+          sl.pushf("# ", &DIM_BOLD);
+          sl.pushf("  /priv <name> <text>", &DIM);
+          sl.push(" - send a private message");
+          scrn.push_line(sl);
+          sl = Line::default();
+          sl.pushf("# ", &DIM_BOLD);
+          sl.pushf("  /join <room>", &DIM);
+          sl.push(" - join a room");
+          scrn.push_line(sl);
+        }
         "quit" => match split_command_toks(&cmd_toks, 1) {
           Ok((_, arg)) => {
             gv.enqueue(&Sndr::Logout(&arg));
