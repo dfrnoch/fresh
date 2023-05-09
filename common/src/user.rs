@@ -115,10 +115,6 @@ impl User {
     !self.errs.is_empty()
   }
 
-  /** Returns an error wrapping/representing any underlying errors that
-  have accumulated. Returns an error even if none have accumulated, so
-  it's a good idea to check with `.has_errors()` before calling this.
-  */
   pub fn get_errors(&self) -> UserError {
     UserError::from_sockets(&(self.errs))
   }
@@ -171,9 +167,7 @@ impl User {
     self.socket.enqueue(&(msg.bytes()));
   }
 
-  /** Attempt to write bytes from the outgoing buffer to the underlying
-  socket. Any errors will be added to an internal `Vec` and not returned.
-  */
+  /// Send any data that's been queued up.
   pub fn send(&mut self) {
     if self.socket.send_buff_size() > 0 {
       if let Err(e) = self.socket.send_data() {
