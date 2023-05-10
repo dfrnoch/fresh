@@ -7,7 +7,7 @@ const DEFAULT_BUFFER_SIZE: usize = 1024;
 
 const NEWLINE: u8 = b'\n';
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum SocketErrorKind {
   SetNoDelayFailed,
   SetNonBlockingFailed,
@@ -31,44 +31,13 @@ impl SocketError {
   }
 
   fn from_err(kind: SocketErrorKind, e: impl std::error::Error) -> Self {
-    Self::new(kind, format!("{e}"))
+    Self::new(kind, e.to_string())
   }
 }
 
 impl std::fmt::Display for SocketError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}: {}", &self.kind, &self.message)
-  }
-}
-
-impl std::fmt::Display for SocketErrorKind {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      SocketErrorKind::SetNoDelayFailed => {
-        write!(f, "Unable to set_nodelay on underlying socket")
-      }
-      SocketErrorKind::SetNonBlockingFailed => {
-        write!(f, "Unable to set_nonblocking on underlying socket")
-      }
-      SocketErrorKind::ShutdownFailed => {
-        write!(f, "Error shutting down underlying socket")
-      }
-      SocketErrorKind::ReadFailed => {
-        write!(f, "Error reading from the underlying socket")
-      }
-      SocketErrorKind::SyntaxError => {
-        write!(f, "Syntax error in data from underlying socket")
-      }
-      SocketErrorKind::WriteFailed => {
-        write!(f, "Error writing to the underlying socket")
-      }
-      SocketErrorKind::FlushFailed => {
-        write!(f, "Error flushing the underlying socket")
-      }
-      SocketErrorKind::GetRemoteAddressFailed => {
-        write!(f, "Error retrieving the remote address")
-      }
-    }
+    write!(f, "{:?}: {}", &self.kind, &self.message)
   }
 }
 
