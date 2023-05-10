@@ -423,8 +423,8 @@ fn split_command_tokens<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a 
   }
 
   let (cmds, args) = toks.split_at(n_cmds);
-  let cmds: Vec<&'a str> = cmds.iter().copied().collect();
-  let arg: String = args.iter().cloned().collect::<Vec<&str>>().concat();
+  let cmds: Vec<&'a str> = cmds.to_vec();
+  let arg: String = args.to_vec().concat();
 
   Ok((cmds, arg))
 }

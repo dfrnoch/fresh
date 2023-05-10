@@ -31,14 +31,13 @@ impl SocketError {
   }
 
   fn from_err(kind: SocketErrorKind, e: impl std::error::Error) -> Self {
-    let kind_str = kind.to_string();
-    Self::new(kind, format!("{}: {}", kind_str, e))
+    Self::new(kind, format!("{e}"))
   }
 }
 
 impl std::fmt::Display for SocketError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "SocketError: {}", &self.message)
+    write!(f, "{}: {}", &self.kind, &self.message)
   }
 }
 
