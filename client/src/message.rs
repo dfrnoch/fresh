@@ -1,14 +1,12 @@
 use crate::{
   connection::Globals,
   input::write_mode_line,
+  line::Line,
   screen::Screen,
   util::styles::{BOLD, DIM, DIM_BOLD, HIGHLIGHT},
   PING, ROSTER_REQUEST,
 };
-use common::{
-  line::Line,
-  proto::{Rcvr, SndOp, Sndr},
-};
+use common::proto::{Rcvr, SndOp, Sndr};
 use log::debug;
 
 const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, INVITE, and GIVE.";

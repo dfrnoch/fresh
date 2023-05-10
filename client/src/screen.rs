@@ -6,9 +6,7 @@ use crossterm::{
 use log::trace;
 use std::io::{Stdout, Write};
 
-use common::line::*;
-
-use crate::util::styles::*;
+use crate::{line::*, util::styles::*};
 
 const SPACE: char = ' ';
 const VBAR: char = '│';

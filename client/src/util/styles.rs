@@ -1,6 +1,7 @@
-use common::line::Style;
 use crossterm::style;
 use lazy_static::lazy_static;
+
+use crate::line::Style;
 
 lazy_static! {
   pub static ref DIM: Style = Style::new(Some(style::Color::AnsiValue(239)), None, None);

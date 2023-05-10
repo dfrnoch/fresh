@@ -1,10 +1,11 @@
 use crate::{
   connection::Globals,
+  line::Line,
   message::respond_to_user_input,
   screen::Screen,
   util::styles::{DIM, HIGHLIGHT},
 };
-use common::{line::Line, proto::Sndr};
+use common::proto::Sndr;
 use crossterm::{event, event::Event, event::KeyCode};
 use log::trace;
 use std::time::Duration;
