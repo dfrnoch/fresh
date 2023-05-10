@@ -263,7 +263,9 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut
         .map(|c| if *c == RETURN { SPACE } else { *c })
         .collect();
 
-      let cmd_toks = tokenize_whitespace(&cmd_line);
+      debug!("cmd_line: {:?}", cmd_line);
+
+      let cmd_toks = cmd_line.split_whitespace().collect::<Vec<&str>>();
       let cmd = cmd_toks[0].to_lowercase();
 
       match cmd.as_str() {
@@ -404,18 +406,10 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut
     }
   }
 
-  let mut lines: Vec<String> = Vec::new();
-  let mut cur_line = String::default();
-  for c in input.into_iter() {
-    if c == '\n' {
-      lines.push(cur_line);
-      cur_line = String::default();
-    } else {
-      cur_line.push(c);
-    }
-  }
-  lines.push(cur_line);
+  let input_str: String = input.into_iter().collect();
+  let lines: Vec<String> = input_str.lines().map(|line| line.to_string()).collect();
   let lineref: Vec<&str> = lines.iter().map(|x| x.as_str()).collect();
+
   global.enqueue(&Sndr::Text {
     who: "",
     lines: &lineref,
@@ -424,49 +418,13 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut
 
 /// Split a vector of &str into a vector of commands and a single argument.
 fn split_command_tokens<'a>(toks: &'a [&str], n_cmds: usize) -> Result<(Vec<&'a str>, String), ()> {
-  if n_cmds == 0 || toks.len() < (2 * n_cmds) - 1 {
+  if n_cmds == 0 || toks.len() < n_cmds {
     return Err(());
   }
 
-  let cmds: Vec<&'a str> = toks.iter().take(n_cmds * 2).step_by(2).copied().collect();
-  let arg: String = toks
-    .iter()
-    .skip(n_cmds * 2)
-    .cloned()
-    .collect::<Vec<&str>>()
-    .join("");
+  let (cmds, args) = toks.split_at(n_cmds);
+  let cmds: Vec<&'a str> = cmds.iter().copied().collect();
+  let arg: String = args.iter().cloned().collect::<Vec<&str>>().concat();
 
   Ok((cmds, arg))
-}
-
-/// Split a string into a vector of &str, splitting on whitespace.
-fn tokenize_whitespace(s: &str) -> Vec<&str> {
-  let mut vec: Vec<&str> = Vec::new();
-
-  let mut change: usize = 0;
-  let mut s_iter = s.chars();
-  let mut in_ws = match s_iter.next() {
-    None => {
-      return vec;
-    }
-    Some(c) => c.is_whitespace(),
-  };
-
-  let s_iter = s.char_indices();
-  for (i, c) in s_iter {
-    if in_ws {
-      if !c.is_whitespace() {
-        vec.push(&s[change..i]);
-        change = i;
-        in_ws = false;
-      }
-    } else if c.is_whitespace() {
-      vec.push(&s[change..i]);
-      change = i;
-      in_ws = true;
-    }
-  }
-  vec.push(&s[change..(s.len())]);
-
-  vec
 }

@@ -104,19 +104,18 @@ impl Line {
     self.fdirs.push(Fmtr::new(n, &RESET));
   }
 
-  /// Append a copy of the contents of `other` to `self`.
-  pub fn append(&mut self, other: &Self) {
-    self.width = None;
-    self.nchars = None;
+  // pub fn append(&mut self, other: &Self) {
+  //   self.width = None;
+  //   self.nchars = None;
 
-    let base = self.chars.len();
-    for c in other.chars.iter() {
-      self.chars.push(*c);
-    }
-    for f in other.fdirs.iter() {
-      self.fdirs.push(Fmtr::new(base + f.idx, &f.code));
-    }
-  }
+  //   let base = self.chars.len();
+  //   for c in other.chars.iter() {
+  //     self.chars.push(*c);
+  //   }
+  //   for f in other.fdirs.iter() {
+  //     self.fdirs.push(Fmtr::new(base + f.idx, &f.code));
+  //   }
+  // }
 
   fn wrap(&mut self, width: usize) {
     let mut wraps: Vec<usize> = Vec::with_capacity(1 + self.chars.len() / width);
