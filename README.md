@@ -143,6 +143,17 @@ byte_limit = 512
 bytes_per_tick = 6
 ```
 
+
+## Network Communication
+
+The network layer of the chat application consists of the protocol and the socket. It is responsible for managing the communication between the clients and the server.
+
+The protocol, defined in `proto.rs`, contains two main structures: `Sndr` and `Rcvr`. These structures represent messages exchanged between the server and clients. The `Sndr` enum is used for sending messages, while the `Rcvr` enum is used for receiving messages. Some messages are bi-directional, meaning they can be used in both directions, while others are specific to client-to-server or server-to-client communication.
+
+The `Socket` struct, defined in `socket.rs`, handles the underlying TCP stream and provides methods to read data, write data, and handle incoming messages. The `SocketError` struct represents errors that may occur during socket operations. The `Socket` struct also offers methods to manage the read and write buffers, set buffer sizes, send data in a blocking or non-blocking manner, and manage the connection's state.
+
+Together, the `Socket` and `proto` modules form the network layer of the chat application, providing a robust and efficient way to exchange messages between clients and the server.
+
 ### TODO (server):
 
 - IP specific blocks/bans. Server doesn't really know anything about the
