@@ -1,6 +1,5 @@
 use super::proto::Rcvr;
 use serde_json::error::Category;
-use std::error::Error;
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpStream};
 
@@ -8,41 +7,71 @@ const DEFAULT_BUFFER_SIZE: usize = 1024;
 
 const NEWLINE: u8 = b'\n';
 
-static ERRS: &[&str] = &[
-  "Unable to set_nodelay on underlying socket",     // 0
-  "Unable to set_nonblocking on underlying socket", // 1
-  "Error shutting down underlying socket",          // 2
-  "Error reading from the underlying socket",       // 3
-  "Syntax error in data from underlying socket",    // 4
-  "Error writing to the underlying socket",         // 5
-  "Error flushing the underlying socket",           // 6
-  "Error retrieving the remote address",            // 7
-];
+#[derive(Debug, Clone)]
+pub enum SocketErrorKind {
+  SetNoDelayFailed,
+  SetNonBlockingFailed,
+  ShutdownFailed,
+  ReadFailed,
+  SyntaxError,
+  WriteFailed,
+  FlushFailed,
+  GetRemoteAddressFailed,
+}
 
 #[derive(Debug)]
 pub struct SocketError {
-  msg: String,
+  kind: SocketErrorKind,
+  message: String,
 }
 
 impl SocketError {
-  pub fn string(message: String) -> SocketError {
-    SocketError { msg: message }
+  pub fn new(kind: SocketErrorKind, message: String) -> Self {
+    Self { kind, message }
   }
 
-  /// Wrap an underlying error (probably a `std::io::Result` from the
-  /// underlying `TcpStream` with a message from `ERRS`, above.
-  fn from_err(errno: usize, e: &dyn Error) -> SocketError {
-    SocketError::string(format!("{}: {}", ERRS[errno], e))
+  fn from_err(kind: SocketErrorKind, e: impl std::error::Error) -> Self {
+    let kind_str = kind.to_string();
+    Self::new(kind, format!("{}: {}", kind_str, e))
   }
 }
 
 impl std::fmt::Display for SocketError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "SocketError: {}", &(self.msg))
+    write!(f, "SocketError: {}", &self.message)
   }
 }
 
-impl Error for SocketError {}
+impl std::fmt::Display for SocketErrorKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      SocketErrorKind::SetNoDelayFailed => {
+        write!(f, "Unable to set_nodelay on underlying socket")
+      }
+      SocketErrorKind::SetNonBlockingFailed => {
+        write!(f, "Unable to set_nonblocking on underlying socket")
+      }
+      SocketErrorKind::ShutdownFailed => {
+        write!(f, "Error shutting down underlying socket")
+      }
+      SocketErrorKind::ReadFailed => {
+        write!(f, "Error reading from the underlying socket")
+      }
+      SocketErrorKind::SyntaxError => {
+        write!(f, "Syntax error in data from underlying socket")
+      }
+      SocketErrorKind::WriteFailed => {
+        write!(f, "Error writing to the underlying socket")
+      }
+      SocketErrorKind::FlushFailed => {
+        write!(f, "Error flushing the underlying socket")
+      }
+      SocketErrorKind::GetRemoteAddressFailed => {
+        write!(f, "Error retrieving the remote address")
+      }
+    }
+  }
+}
 
 fn get_actual_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
   let line = e.line() - 1;
@@ -73,10 +102,13 @@ pub struct Socket {
 impl Socket {
   pub fn new(stream: TcpStream) -> Result<Socket, SocketError> {
     if let Err(e) = stream.set_nodelay(true) {
-      return Err(SocketError::from_err(0, &e));
+      return Err(SocketError::from_err(SocketErrorKind::SetNoDelayFailed, &e));
     }
     if let Err(e) = stream.set_nonblocking(true) {
-      return Err(SocketError::from_err(1, &e));
+      return Err(SocketError::from_err(
+        SocketErrorKind::SetNonBlockingFailed,
+        &e,
+      ));
     }
     let mut new_buff: Vec<u8> = vec![0; DEFAULT_BUFFER_SIZE];
     new_buff.resize(DEFAULT_BUFFER_SIZE, 0u8);
@@ -91,7 +123,7 @@ impl Socket {
 
   pub fn shutdown(&mut self) -> Result<(), SocketError> {
     match self.stream.shutdown(Shutdown::Both) {
-      Err(e) => Err(SocketError::from_err(2, &e)),
+      Err(e) => Err(SocketError::from_err(SocketErrorKind::ShutdownFailed, &e)),
       Ok(()) => Ok(()),
     }
   }
@@ -110,7 +142,7 @@ impl Socket {
       Err(e) => match e.kind() {
         std::io::ErrorKind::WouldBlock => Ok(0),
         std::io::ErrorKind::Interrupted => Ok(0),
-        _ => Err(SocketError::from_err(3, &e)),
+        _ => Err(SocketError::from_err(SocketErrorKind::ReadFailed, &e)),
       },
       Ok(n) => {
         if n > 0 {
@@ -137,14 +169,14 @@ impl Socket {
           offs = get_actual_offset(&self.current, &e).unwrap();
         }
         _ => {
-          return Err(SocketError::from_err(4, &e));
+          return Err(SocketError::from_err(SocketErrorKind::SyntaxError, &e));
         }
       },
     }
 
     let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current[..offs]).map(Some);
     self.current = self.current.split_off(offs);
-    maybe_msg.map_err(|e| SocketError::from_err(4, &e))
+    maybe_msg.map_err(|e| SocketError::from_err(SocketErrorKind::SyntaxError, &e))
   }
 
   pub fn enqueue(&mut self, data: &[u8]) {
@@ -161,13 +193,13 @@ impl Socket {
 
     match res {
       Err(e) if e.kind() == std::io::ErrorKind::Interrupted => Ok(self.send_buff.len()),
-      Err(e) => Err(SocketError::from_err(5, &e)),
+      Err(e) => Err(SocketError::from_err(SocketErrorKind::WriteFailed, &e)),
       Ok(n) => {
         if n == self.send_buff.len() {
           self
             .stream
             .flush()
-            .map_err(|e| SocketError::from_err(6, &e))?;
+            .map_err(|e| SocketError::from_err(SocketErrorKind::FlushFailed, &e))?;
           self.send_buff.clear();
           Ok(0)
         } else {
@@ -208,7 +240,10 @@ impl Socket {
   pub fn get_addr(&self) -> Result<String, SocketError> {
     match self.stream.peer_addr() {
       Ok(a) => Ok(a.to_string()),
-      Err(e) => Err(SocketError::from_err(7, &e)),
+      Err(e) => Err(SocketError::from_err(
+        SocketErrorKind::GetRemoteAddressFailed,
+        &e,
+      )),
     }
   }
 }
