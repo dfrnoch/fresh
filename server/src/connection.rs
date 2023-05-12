@@ -22,9 +22,9 @@ pub fn initial_negotiation(user: &mut User) -> Result<(), String> {
     }
 }
 
-pub fn listen(addr: String, tx: mpsc::Sender<User>) {
+pub fn listen(address: String, tx: mpsc::Sender<User>) {
     let mut new_user_id: u64 = 100;
-    let listener = TcpListener::bind(&addr).unwrap();
+    let listener = TcpListener::bind(&address).unwrap();
     for res in listener.incoming() {
         match res {
             Err(e) => {
@@ -35,7 +35,7 @@ pub fn listen(addr: String, tx: mpsc::Sender<User>) {
                     "listen(): Accepted connection from {:?}",
                     stream.peer_addr().unwrap()
                 );
-                let new_sock = match Socket::new(stream) {
+                let new_socket = match Socket::new(stream) {
                     Err(e) => {
                         debug!("listen(): Error setting up new Sock: {}", &e);
                         continue;
@@ -43,7 +43,7 @@ pub fn listen(addr: String, tx: mpsc::Sender<User>) {
                     Ok(x) => x,
                 };
 
-                let mut user = User::new(new_sock, new_user_id);
+                let mut user = User::new(new_socket, new_user_id);
                 match initial_negotiation(&mut user) {
                     Err(e) => {
                         debug!("listen(): Error negotiating initial protocol: {}", &e);

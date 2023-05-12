@@ -76,11 +76,11 @@ fn configure() -> ClientConfig {
         }
     };
 
-    if let Some(n) = opts.name {
-        cfg.name = n;
+    if let Some(name) = opts.name {
+        cfg.name = name;
     }
-    if let Some(a) = opts.address {
-        cfg.address = a;
+    if let Some(address) = opts.address {
+        cfg.address = address;
     }
 
     cfg
@@ -100,23 +100,23 @@ fn main() {
 
     debug!("{:?}", &cfg);
     println!("Attempting to connect to {}...", &cfg.address);
-    let mut sck: Socket = match connect(&cfg) {
+    let mut socket: Socket = match connect(&cfg) {
         Err(e) => {
             println!("{}", e);
             std::process::exit(2);
         }
         Ok(x) => x,
     };
-    sck.set_read_buffer_size(cfg.read_size);
+    socket.set_read_buffer_size(cfg.read_size);
     println!("...success. Negotiating initial protocol...");
 
     {
-        let b = Sndr::Query {
+        let bytes = Sndr::Query {
             what: "addr",
             arg: "",
         }
         .bytes();
-        sck.enqueue(&b);
+        socket.enqueue(&bytes);
     }
     println!("...success. Initializing terminal.");
 
@@ -126,8 +126,8 @@ fn main() {
         mode: Mode::Insert,
         local_addr: String::default(),
         messages: Vec::new(),
-        server_addr: sck.get_addr().unwrap(),
-        socket: sck,
+        server_addr: socket.get_addr().unwrap(),
+        socket,
         cmd: cfg.cmd_char,
         run: true,
     };

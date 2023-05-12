@@ -252,8 +252,8 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
 /// In input mode, when the user hits return, this processes processes the
 /// content of the input line and decides what to do.
 pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut Globals) {
-    if let Some(c) = input.first() {
-        if *c == global.cmd {
+    if let Some(char) = input.first() {
+        if *char == global.cmd {
             if input.len() == 1 {
                 return;
             }

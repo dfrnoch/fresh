@@ -41,7 +41,7 @@ impl std::fmt::Display for SocketError {
     }
 }
 
-fn get_actual_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
+fn get_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
     let line = e.line() - 1;
     let col = e.column() - 1;
     let mut line_n: usize = 0;
@@ -57,7 +57,7 @@ fn get_actual_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'stati
         }
     });
 
-    offs.ok_or("Overran buffer seeking error location.")
+    offs.ok_or("Failed to find offset")
 }
 
 pub struct Socket {
@@ -133,8 +133,9 @@ impl Socket {
                 Category::Eof => {
                     return Ok(None);
                 }
+
                 Category::Syntax => {
-                    offs = get_actual_offset(&self.current, &e).unwrap();
+                    offs = get_offset(&self.current, &e).unwrap();
                 }
                 _ => {
                     return Err(SocketError::from_err(SocketErrorKind::SyntaxError, &e));

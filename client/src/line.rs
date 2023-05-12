@@ -21,17 +21,17 @@ pub struct Style(String);
 
 impl Style {
     pub fn new(
-        fg: Option<style::Color>,
-        bg: Option<style::Color>,
-        attrs: Option<&[style::Attribute]>,
+        foreground: Option<style::Color>,
+        background: Option<style::Color>,
+        attributes: Option<&[style::Attribute]>,
     ) -> Style {
         let mut buff = Vec::new();
-        let cols = style::Colors {
-            foreground: fg,
-            background: bg,
+        let colors = style::Colors {
+            foreground,
+            background,
         };
-        buff.execute(style::SetColors(cols)).unwrap();
-        if let Some(x) = attrs {
+        buff.execute(style::SetColors(colors)).unwrap();
+        if let Some(x) = attributes {
             for attr in x.iter() {
                 buff.execute(style::SetAttribute(*attr)).unwrap();
             }
@@ -51,14 +51,14 @@ impl std::ops::Deref for Style {
 /// This struct is used in the `Line` internals to store formatting info.
 #[derive(Clone)]
 struct Fmtr {
-    idx: usize,
+    index: usize,
     code: Style,
 }
 
 impl Fmtr {
     fn new(i: usize, from: &Style) -> Fmtr {
         Fmtr {
-            idx: i,
+            index: i,
             code: from.clone(),
         }
     }
@@ -146,7 +146,7 @@ impl Line {
             }
 
             while let Some(f) = fmt_iter.peek() {
-                if f.idx == i {
+                if f.index == i {
                     cur_line.push_str(&f.code);
                     fmt_iter.next();
                 } else {
@@ -182,7 +182,7 @@ impl Line {
 
         for (i, c) in self.chars[..n].iter().enumerate() {
             while let Some(f) = fmt_iter.peek() {
-                if f.idx == i {
+                if f.index == i {
                     s.push_str(&f.code);
                     fmt_iter.next();
                 } else {

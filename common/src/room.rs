@@ -7,7 +7,7 @@ use super::user::User;
 
 #[derive(Debug)]
 pub struct Room {
-    idn: u64,
+    id: u64,
     name: String,
     idstr: String,
     users: Vec<u64>,
@@ -21,7 +21,7 @@ pub struct Room {
 impl Room {
     pub fn new(id: u64, new_name: String, creator_id: u64) -> Room {
         Room {
-            idn: id,
+            id,
             idstr: collapse(&new_name),
             name: new_name,
             users: Vec::new(),
@@ -34,7 +34,7 @@ impl Room {
     }
 
     pub fn get_id(&self) -> u64 {
-        self.idn
+        self.id
     }
     pub fn get_name(&self) -> &str {
         &(self.name)
@@ -46,14 +46,14 @@ impl Room {
     pub fn deliver(&self, env: &Env, uid_hash: &mut HashMap<u64, User>) {
         match env.dest {
             End::User(uid) => {
-                if let Some(u) = uid_hash.get_mut(&uid) {
-                    u.deliver(env);
+                if let Some(user) = uid_hash.get_mut(&uid) {
+                    user.deliver(env);
                 }
             }
             _ => {
                 for uid in &(self.users) {
-                    if let Some(u) = uid_hash.get_mut(uid) {
-                        u.deliver(env);
+                    if let Some(user) = uid_hash.get_mut(uid) {
+                        user.deliver(env);
                     }
                 }
             }
@@ -69,14 +69,14 @@ impl Room {
         for env in self.inbox.drain(..) {
             match env.dest {
                 End::User(uid) => {
-                    if let Some(u) = uid_hash.get_mut(&uid) {
-                        u.deliver(&env);
+                    if let Some(user) = uid_hash.get_mut(&uid) {
+                        user.deliver(&env);
                     }
                 }
                 _ => {
                     for uid in &(self.users) {
-                        if let Some(u) = uid_hash.get_mut(uid) {
-                            u.deliver(&env);
+                        if let Some(user) = uid_hash.get_mut(uid) {
+                            user.deliver(&env);
                         }
                     }
                 }

@@ -1154,8 +1154,7 @@ pub fn process_room(
         }
     }
 
-    // Change room operator if current op is no longer in room.
-
+    // Change the room OP if necessary.
     if rid != 0 {
         let room = ctxt.room_map.get_mut(&rid).unwrap();
         let op_id = room.get_op();

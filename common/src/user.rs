@@ -48,7 +48,7 @@ pub struct User {
     name: String,
     idn: u64,
     idstr: String,
-    bytes_sucked: usize,
+    bytes_read: usize,
     quota_bytes: usize,
     last_data_time: Instant,
     errs: Vec<SocketError>,
@@ -63,7 +63,7 @@ impl User {
             idn: new_idn,
             idstr: collapse(&new_name),
             name: new_name,
-            bytes_sucked: 0,
+            bytes_read: 0,
             quota_bytes: 0,
             last_data_time: Instant::now(),
             errs: Vec::<SocketError>::new(),
@@ -208,7 +208,7 @@ impl User {
                 return None;
             }
             Ok(n) => {
-                self.bytes_sucked += n;
+                self.bytes_read += n;
             }
         }
 
