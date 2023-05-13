@@ -107,7 +107,7 @@ impl ServerConfig {
                         println!("\n\nDefault configuration file written to {}", &dir);
                         println!("? >> You will probably want to edit this file to change your name and the server address.");
                         println!("+ >> Press enter to continue.");
-                        io::stdin().lock().lines().next();
+                        let _ = std::io::stdin().lines();
                     }
                     Err(e) => {
                         println!("Error writing default config file: {}", &e);
@@ -240,7 +240,7 @@ impl ClientConfig {
                         println!("\n\nDefault configuration file written to {}", &dir);
                         println!("? >> You will probably want to edit this file to change your name and the server address.");
                         println!("+ >> Press enter to continue.");
-                        io::stdin().lock().lines().next();
+                        let _ = std::io::stdin().lines();
                     }
                     Err(e) => {
                         println!("Error writing default config file: {}", &e);
