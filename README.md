@@ -18,9 +18,9 @@ binary.
 
 #### Configuration
 
-Run `fresh -g` to generate a default config file; this will save it to the
-default config dir. You'll probably want to at least set the server address. The
-config options are
+Both server and client will check for a `config.toml` file in the OS-specific
+default config dir and directory from which the binary was run. You'll probably
+want to at least set the server address. The config options are:
 
 - `address`: This specifies the IP address and port of the server that the
   client should connect to. To override the default value, use the `-a`
@@ -123,10 +123,10 @@ If you are the Operator of a Room, you can also use the following commands:
 
 ### Server Instructions
 
-Once you start the server for the first time, it will create a `config.toml` in
-the OS-specific configuration directory. On Linux, this is
-`~/.config/fresh-server/config.toml`. You can edit this file to change the
-server's behavior. The default values are:
+Once you start the server for the first time, it will create a `freshd.toml` in
+the OS-specific configuration directory. On Linux, for example, this will be
+`~/.config/freshd.toml`. You can edit this file to change the server's behavior.
+The default values are:
 
 ```toml
 address = "192.168.1.13:51516"      # The address to listen on

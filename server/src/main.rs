@@ -9,7 +9,7 @@ use common::proto::*;
 use common::room::Room;
 use common::user::*;
 use common::util::collapse;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use simplelog::WriteLogger;
 use std::collections::HashMap;
 use std::sync::mpsc;
@@ -38,6 +38,8 @@ fn main() {
     )
     .unwrap();
     let listen_addr = cfg.address.clone();
+
+    info!("Starting server on {}", listen_addr);
 
     let mut user_map: HashMap<u64, User> = HashMap::new();
     let mut ustr_map: HashMap<String, u64> = HashMap::new();

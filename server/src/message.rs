@@ -30,6 +30,7 @@ impl AsRef<SmallVec<[Env; ENVS_SIZE]>> for Envs {
         &self.0
     }
 }
+
 impl AsMut<SmallVec<[Env; ENVS_SIZE]>> for Envs {
     fn as_mut(&mut self) -> &mut SmallVec<[Env; ENVS_SIZE]> {
         &mut self.0
