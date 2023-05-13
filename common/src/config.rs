@@ -17,8 +17,8 @@ const SERVER_TICK: u64 = 500; // server, min time through main loop
 const BYTE_LIMIT: usize = 512; // server user rate limiting byte quota
 const BYTE_TICK: usize = 6; // server byte quota dissipation per tick
 const LOG_LEVEL: LevelFilter = LevelFilter::Warn; // server log level
-const BLACKOUT_TO_PING: u64 = 10000; // msec since data received from a client that server will send a ping
-const BLACKOUT_TO_KICK: u64 = 20000; // to confirm connection or log the client off for unreachability
+const TIME_TO_PING: u64 = 10000; // msec since data received from a client that server will send a ping
+const TIME_TO_KICK: u64 = 20000; // to confirm connection or log the client off for unreachability
 const CLIENT_TICK: u64 = 100; // client time through main loop
 const READ_SIZE: usize = 1024; // client number of bytes per read attempt
 const ROSTER_WIDTH: u16 = 24; // Also server max user name and max room name lengths
@@ -54,8 +54,8 @@ fn read_first_to_string(ps: &[PathBuf]) -> Result<String, String> {
 struct ServerConfigFile {
     address: Option<String>,
     tick_ms: Option<u64>,
-    blackout_to_ping_ms: Option<u64>,
-    blackout_to_kick_ms: Option<u64>,
+    time_to_ping_ms: Option<u64>,
+    time_to_kick_ms: Option<u64>,
     max_user_name_length: Option<usize>,
     max_room_name_length: Option<usize>,
     lobby_name: Option<String>,
@@ -70,8 +70,8 @@ struct ServerConfigFile {
 pub struct ServerConfig {
     pub address: String,
     pub min_tick: Duration,
-    pub blackout_time_to_ping: Duration,
-    pub blackout_time_to_kick: Duration,
+    pub time_to_ping: Duration,
+    pub time_to_kick: Duration,
     pub max_user_name_length: usize,
     pub max_room_name_length: usize,
     pub lobby_name: String,
@@ -124,12 +124,8 @@ impl ServerConfig {
         ServerConfig {
             address: cfg_file.address.unwrap_or_else(|| ADDR.to_string()),
             min_tick: Duration::from_millis(cfg_file.tick_ms.unwrap_or(SERVER_TICK)),
-            blackout_time_to_ping: Duration::from_millis(
-                cfg_file.blackout_to_ping_ms.unwrap_or(BLACKOUT_TO_PING),
-            ),
-            blackout_time_to_kick: Duration::from_millis(
-                cfg_file.blackout_to_kick_ms.unwrap_or(BLACKOUT_TO_KICK),
-            ),
+            time_to_ping: Duration::from_millis(cfg_file.time_to_ping_ms.unwrap_or(TIME_TO_PING)),
+            time_to_kick: Duration::from_millis(cfg_file.time_to_kick_ms.unwrap_or(TIME_TO_KICK)),
             max_user_name_length: cfg_file
                 .max_user_name_length
                 .unwrap_or(ROSTER_WIDTH as usize),

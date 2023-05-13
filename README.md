@@ -129,30 +129,43 @@ the OS-specific configuration directory. On Linux, this is
 server's behavior. The default values are:
 
 ```toml
-address = "192.168.1.13:51516"
-tick_ms = 500
-blackout_to_ping_ms  = 10000
-blackout_to_kick_ms  = 20000
-max_user_name_length = 24
-max_room_name_length = 32
-lobby_name = 'Lobby'
-welcome = "Welcome to the server."
-log_file = 'freshd.log'
-log_level = 1
-byte_limit = 512
-bytes_per_tick = 6
+address = "192.168.1.13:51516"      # The address to listen on
+tick_ms = 500                       # The number of milliseconds between ticks
+time_to_ping_ms  = 10000            # The number of milliseconds between pings
+time_to_kick_ms  = 20000            # The number of milliseconds before kicking a client for not responding to a ping
+max_user_name_length = 24           # The maximum length of a username
+max_room_name_length = 32           # The maximum length of a room name
+lobby_name = 'Lobby'                # The name of the lobby
+welcome = "Welcome to the server."  # The message sent to the client when they connect
+log_file = 'freshd.log'             # The name of the log file
+log_level = 1                       # The log level (0-5)
+byte_limit = 512                    # The number of bytes allowed per quota
+bytes_per_tick = 6                  # The number of bytes to add to the quota per tick
 ```
-
 
 ## Network Communication
 
-The network layer of the chat application consists of the protocol and the socket. It is responsible for managing the communication between the clients and the server.
+The network layer of the chat application consists of the protocol and the
+socket. It is responsible for managing the communication between the clients and
+the server.
 
-The protocol, defined in `proto.rs`, contains two main structures: `Sndr` and `Rcvr`. These structures represent messages exchanged between the server and clients. The `Sndr` enum is used for sending messages, while the `Rcvr` enum is used for receiving messages. Some messages are bi-directional, meaning they can be used in both directions, while others are specific to client-to-server or server-to-client communication.
+The protocol, defined in `proto.rs`, contains two main structures: `Sndr` and
+`Rcvr`. These structures represent messages exchanged between the server and
+clients. The `Sndr` enum is used for sending messages, while the `Rcvr` enum is
+used for receiving messages. Some messages are bi-directional, meaning they can
+be used in both directions, while others are specific to client-to-server or
+server-to-client communication.
 
-The `Socket` struct, defined in `socket.rs`, handles the underlying TCP stream and provides methods to read data, write data, and handle incoming messages. The `SocketError` struct represents errors that may occur during socket operations. The `Socket` struct also offers methods to manage the read and write buffers, set buffer sizes, send data in a blocking or non-blocking manner, and manage the connection's state.
+The `Socket` struct, defined in `socket.rs`, handles the underlying TCP stream
+and provides methods to read data, write data, and handle incoming messages. The
+`SocketError` struct represents errors that may occur during socket operations.
+The `Socket` struct also offers methods to manage the read and write buffers,
+set buffer sizes, send data in a blocking or non-blocking manner, and manage the
+connection's state.
 
-Together, the `Socket` and `proto` modules form the network layer of the chat application, providing a robust and efficient way to exchange messages between clients and the server.
+Together, the `Socket` and `proto` modules form the network layer of the chat
+application, providing a robust and efficient way to exchange messages between
+clients and the server.
 
 ### TODO (server):
 

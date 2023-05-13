@@ -1069,13 +1069,13 @@ pub fn process_room(
                 None => {
                     let last = user.get_last_data_time();
                     match current_time.checked_duration_since(last) {
-                        Some(x) if x > cfg.blackout_time_to_kick => {
+                        Some(x) if x > cfg.time_to_kick => {
                             logouts.push((
                                 *uid,
                                 "Too long since server received data from the client.",
                             ));
                         }
-                        Some(x) if x > cfg.blackout_time_to_ping => {
+                        Some(x) if x > cfg.time_to_ping => {
                             user.deliver_msg(&Sndr::Ping);
                         }
                         _ => {}
