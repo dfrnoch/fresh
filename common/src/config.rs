@@ -1,8 +1,8 @@
+use simplelog::LevelFilter;
 use std::fmt::Write;
+use std::io::{self, BufRead};
 use std::path::PathBuf;
 use std::time::Duration;
-
-use simplelog::LevelFilter;
 
 const CLIENT_NAME: &str = "fresh.toml";
 const SERVER_NAME: &str = "freshd.toml";
@@ -100,12 +100,14 @@ impl ServerConfig {
                     std::process::exit(1);
                 }
             },
-            Err(e) => {
-                println!("Error reading config file: {}", &e);
-                println!("Creating a default config.");
+            Err(_) => {
+                println!("Error reading config file, creating default.");
                 match Self::generate() {
                     Ok(dir) => {
-                        println!("Default configuration file written to {}", &dir);
+                        println!("\n\nDefault configuration file written to {}", &dir);
+                        println!("? >> You will probably want to edit this file to change your name and the server address.");
+                        println!("+ >> Press enter to continue.");
+                        io::stdin().lock().lines().next();
                     }
                     Err(e) => {
                         println!("Error writing default config file: {}", &e);
@@ -231,12 +233,14 @@ impl ClientConfig {
                     return Err(format!("Error parsing config file: {}", &e));
                 }
             },
-            Err(e) => {
-                println!("Error reading config file: {}", &e);
-                println!("Creating a default config.");
+            Err(_) => {
+                println!("Error reading config file, creating default.");
                 match Self::generate() {
                     Ok(dir) => {
-                        println!("Default configuration file written to {}", &dir);
+                        println!("\n\nDefault configuration file written to {}", &dir);
+                        println!("? >> You will probably want to edit this file to change your name and the server address.");
+                        println!("+ >> Press enter to continue.");
+                        io::stdin().lock().lines().next();
                     }
                     Err(e) => {
                         println!("Error writing default config file: {}", &e);
