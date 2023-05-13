@@ -12,7 +12,7 @@ const ADDR: &str = "127.0.0.1:1234"; // server address
 const SERVER_LOG: &str = "freshd.log"; // server log file
 const NAME: &str = "fresh user"; // client user name
 const LOBBY_NAME: &str = "Lobby"; // server landing room name
-const WELCOME: &str = "Welcome to the server."; // server welcome message
+const WELCOME_MESSAGE: &str = "Welcome to the server."; // server welcome message
 const SERVER_TICK: u64 = 500; // server, min time through main loop
 const BYTE_LIMIT: usize = 512; // server user rate limiting byte quota
 const BYTE_TICK: usize = 6; // server byte quota dissipation per tick
@@ -59,7 +59,7 @@ struct ServerConfigFile {
     max_user_name_length: Option<usize>,
     max_room_name_length: Option<usize>,
     lobby_name: Option<String>,
-    welcome: Option<String>,
+    welcome_message: Option<String>,
     log_file: Option<String>,
     log_level: Option<u8>,
     byte_limit: Option<usize>,
@@ -75,7 +75,7 @@ pub struct ServerConfig {
     pub max_user_name_length: usize,
     pub max_room_name_length: usize,
     pub lobby_name: String,
-    pub welcome: String,
+    pub welcome_message: String,
     pub log_file: String,
     pub log_level: LevelFilter,
     pub byte_limit: usize,
@@ -135,7 +135,9 @@ impl ServerConfig {
             lobby_name: cfg_file
                 .lobby_name
                 .unwrap_or_else(|| LOBBY_NAME.to_string()),
-            welcome: cfg_file.welcome.unwrap_or_else(|| WELCOME.to_string()),
+            welcome_message: cfg_file
+                .welcome_message
+                .unwrap_or_else(|| WELCOME_MESSAGE.to_string()),
             log_file: cfg_file.log_file.unwrap_or_else(|| SERVER_LOG.to_string()),
             log_level: logl,
             byte_limit: cfg_file.byte_limit.unwrap_or(BYTE_LIMIT),

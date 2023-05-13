@@ -100,7 +100,7 @@ fn main() {
 
         if let Ok(mut user) = urecvr.try_recv() {
             debug!("Accepting user {}: {}", user.get_id(), user.get_name());
-            user.deliver_msg(&Sndr::Info(&cfg.welcome));
+            user.deliver_msg(&Sndr::Info(&cfg.welcome_message));
 
             let mut rename: Option<String> = None;
             if user.get_idstr().is_empty() {
