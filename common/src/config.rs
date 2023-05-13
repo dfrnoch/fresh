@@ -30,20 +30,20 @@ const MAX_SCROLLBACK: usize = 2000; // client will trim scrollback to MIN_SCROLL
 fn default_config_dir() -> PathBuf {
     match directories::BaseDirs::new() {
         None => PathBuf::default(),
-        Some(d) => d.config_dir().to_path_buf(),
+        Some(dir) => dir.config_dir().to_path_buf(),
     }
 }
 
 /// Attempts to read the first file in the list of paths, returning the contents as a String
-fn read_first_to_string(ps: &[PathBuf]) -> Result<String, String> {
+fn read_first_to_string(paths: &[PathBuf]) -> Result<String, String> {
     let mut misses = String::from("Couldn't read from");
-    for p in ps.iter() {
-        match std::fs::read_to_string(p) {
+    for path in paths.iter() {
+        match std::fs::read_to_string(path) {
             Ok(s) => {
                 return Ok(s);
             }
             Err(e) => {
-                write!(&mut misses, "\n\"{}\" ({})", p.display(), e).unwrap();
+                write!(&mut misses, "\n\"{}\" ({})", path.display(), e).unwrap();
             }
         }
     }
@@ -102,7 +102,15 @@ impl ServerConfig {
             },
             Err(e) => {
                 println!("Error reading config file: {}", &e);
-                println!("Using default configuration.");
+                println!("Creating a default config.");
+                match Self::generate() {
+                    Ok(dir) => {
+                        println!("Default configuration file written to {}", &dir);
+                    }
+                    Err(e) => {
+                        println!("Error writing default config file: {}", &e);
+                    }
+                }
                 ServerConfigFile::default()
             }
         };
@@ -142,6 +150,39 @@ impl ServerConfig {
             log_level: logl,
             byte_limit: cfg_file.byte_limit.unwrap_or(BYTE_LIMIT),
             byte_tick: cfg_file.bytes_per_tick.unwrap_or(BYTE_TICK),
+        }
+    }
+
+    fn generate() -> Result<String, String> {
+        let cfg = ServerConfigFile {
+            address: Some(ADDR.to_string()),
+            tick_ms: Some(SERVER_TICK),
+            time_to_ping_ms: Some(TIME_TO_PING),
+            time_to_kick_ms: Some(TIME_TO_KICK),
+            max_user_name_length: Some(ROSTER_WIDTH as usize),
+            max_room_name_length: Some(ROSTER_WIDTH as usize),
+            lobby_name: Some(LOBBY_NAME.to_string()),
+            welcome_message: Some(WELCOME_MESSAGE.to_string()),
+            log_file: Some(SERVER_LOG.to_string()),
+            log_level: Some(LOG_LEVEL as u8),
+            byte_limit: Some(BYTE_LIMIT),
+            bytes_per_tick: Some(BYTE_TICK),
+        };
+
+        let mut cfg_path = default_config_dir();
+        cfg_path.push(SERVER_NAME);
+        let cfg_str = toml::to_string(&cfg).unwrap();
+
+        match std::fs::write(&cfg_path, cfg_str) {
+            Ok(()) => match cfg_path.to_str() {
+                Some(x) => Ok(String::from(x)),
+                None => Ok(cfg_path.to_string_lossy().to_string()),
+            },
+            Err(e) => Err(format!(
+                "Error writing new config file {}: {}",
+                &cfg_path.display(),
+                &e
+            )),
         }
     }
 }
@@ -192,7 +233,15 @@ impl ClientConfig {
             },
             Err(e) => {
                 println!("Error reading config file: {}", &e);
-                println!("Using default configuration.");
+                println!("Creating a default config.");
+                match Self::generate() {
+                    Ok(dir) => {
+                        println!("Default configuration file written to {}", &dir);
+                    }
+                    Err(e) => {
+                        println!("Error writing default config file: {}", &e);
+                    }
+                }
                 ClientConfigFile::default()
             }
         };
@@ -222,7 +271,7 @@ impl ClientConfig {
         Ok(cc)
     }
 
-    pub fn generate() -> Result<String, String> {
+    fn generate() -> Result<String, String> {
         let cfg = ClientConfigFile {
             address: Some(String::from(ADDR)),
             name: Some(String::from(NAME)),

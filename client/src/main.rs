@@ -42,31 +42,10 @@ struct ClapOpts {
 
     #[arg(short = 'a', long = "address")]
     address: Option<String>,
-
-    #[arg(
-        short = 'g',
-        long = "generate-default",
-        default_value = "false",
-        default_missing_value = "true"
-    )]
-    write: bool,
 }
 
 fn configure() -> ClientConfig {
     let opts = ClapOpts::parse();
-
-    if opts.write {
-        match ClientConfig::generate() {
-            Ok(dir) => {
-                println!("Default configuration file written to {}", &dir);
-                std::process::exit(0);
-            }
-            Err(e) => {
-                println!("{}", e);
-                std::process::exit(2);
-            }
-        }
-    }
 
     let mut cfg = match ClientConfig::configure(opts.config) {
         Ok(x) => x,

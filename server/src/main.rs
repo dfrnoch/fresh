@@ -30,7 +30,7 @@ fn gen_name(init_count: u64, map: &HashMap<String, u64>) -> String {
 
 fn main() {
     let cfg: ServerConfig = ServerConfig::configure();
-    println!("Configuration: {:?}", &cfg);
+
     WriteLogger::init(
         cfg.log_level,
         simplelog::Config::default(),
