@@ -1,6 +1,5 @@
 use simplelog::LevelFilter;
 use std::fmt::Write;
-use std::io::{self, BufRead};
 use std::path::PathBuf;
 use std::time::Duration;
 
