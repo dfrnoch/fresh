@@ -1,177 +1,245 @@
-# Fresh
+**Úvod**
 
-[![DeepSource](https://app.deepsource.com/gh/lnxcz/fresh.svg/?label=active+issues&show_trend=true&token=CMLlIbDLbu5SNKhIR0MXQspB)](https://app.deepsource.com/gh/lnxcz/fresh/?ref=repository-badge)
+Fresh Chat je jednoduchá chatovací aplikace založená na terminálu, která se
+skládá ze serveru a několika připojených klientů. Cílem této dokumentace je
+vysvětlit strukturu kódu a klíčová návrhová rozhodnutí aplikace.
 
-### Overview
+## **I. Přehled struktury kódu**
 
-`Fresh` is a simple & customizable chat server and client. It is designed to be
-easy to use and easy to extend. Both the server and client are written in Rust,
-and the client uses the crossterm library for its UI.
+Struktura kódu je rozdělena na tři hlavní části: serverový kód v adresáři
+server, klientský kód v adresáři clienta společný adresář common.
 
-### Installation
+Klíčové komponenty jsou:
 
-Head over to the [releases](https://github.com/lnxcz/frsh/releases) page and
-download the latest release for your platform. Extract the archive and run the
-binary.
+- `common` - Sdílený kód mezi serverem a klientem, včetně:
+  - `proto.rs` - Definuje kódování/dekódování JSON zpráv přes TCP.
+  - `room.rs` - objekty Room a User reprezentující chatovací místnosti a klienty
+- `server` - Obsahuje kód chatovacího serveru, který spravuje:
+  - `connection.rs` - Nastavení TCP liestenera a přijímání nových klientů
+  - `processing.rs` - Zpracování příchozích zpráv a generování odpovědí
+  - `message.rs` - Definuje obálku pro zprávy odesílané mezi komponentami
+  - `main.rs` - Spouští server a spravuje smyčku událostí
+- `client` - Obsahuje kód klienta chatu založeného na terminálu:
+  - `screen.rs` - Spravuje uživatelské rozhraní terminálu pomocí crosstermu
+  - `line.rs` - Reprezentuje formátovaný řádek textu
+  - `input.rs` - Zpracovává uživatelský vstup a různé režimy
+  - `message.rs` - Zpracovává příchozí zprávy ze serveru
+  - `main.rs` - Spouští klienta a spravuje smyčku událostí
 
-### Client instructions
+## **II. Architektura klient-server**
 
-#### Configuration
+Server a klienti komunikují prostřednictvím připojení TCP pomocí kódování JSON.
+Modul proto.rs v common knihovně definuje výčet Sndr reprezentující zprávy
+odesílané klienty a výčet Rcvr pro zprávy přijímané klienty.
 
-Run `fresh -g` to generate a default config file; this will save it to the
-default config dir. You'll probably want to at least set the server address. The
-config options are
+Například varianta Sndr::Text představuje textovou zprávu odeslanou z klienta do
+chatovací místnosti:
 
-- `address`: This specifies the IP address and port of the server that the
-  client should connect to. To override the default value, use the `-a`
-  command-line option.
-
-- `name`: This sets the desired name to use when connecting to the server. If
-  the chosen name is already in use, a generic name will be assigned instead.
-  The default value can be changed using the `-n` command-line option.
-
-- `timeout_ms`: This sets the minimum amount of time (in milliseconds) that each
-  iteration of the main loop should take. Decreasing this value can make the
-  client feel more responsive, but may increase resource usage.
-
-- `read_size`: This determines the number of bytes to read from the server
-  during each iteration of the main loop. The default value is typically
-  sufficient. Setting this to a very low number will affect performance, and
-  setting it to 0 will make the client unusable.
-
-- `roster_width`: This specifies the width (in characters) of the panel that
-  displays the current room's users. As the server limits usernames to 24
-  characters, this setting is set to a reasonable default value.
-
-- `cmd_char`: This is the character used to indicate that a line of input should
-  be interpreted as a command rather than plain text. The default value will be
-  assumed in the following instructions.
-
-- `max_scrollback`: This sets the maximum number of lines to keep in the
-  scrollback buffer.
-
-- `min_scrollback`: This specifies the minimum number of lines to retain when
-  the scrollback buffer reaches its maximum capacity. It should be noted that
-  this value must be smaller than `max_scrollback`.
-
-#### Use
-
-The client's operation is _modal_. When you first start the client, you will be
-in _insert_ mode (indicated by `Ins` in the lower-left-hand corner). In this
-mode, you can type text, which will be sent to the server when you hit `Enter`.
-
-Pressing `Esc` will put you in _command_ mode (indicated by `Cmd` in the
-lower-left-hand corner). In this mode, you can enter either commands to the
-client or and vi\
-following keybindings are available:
-
-- `q` will quit the client.
-
-- `PgUp/PgDn` will scroll the chat text up/down one screen.
-
-- The up/down arrow keys (or K/J) will scroll the chat text up/down one line.
-
-- `alt-Up/Dn/PgUp/PgDn` will scroll the roster window.
-
-- `h/l` will scroll the chat text left/right.
-
-- `w/b` will scroll the chat text forward/backward one word.
-
-- `D` will put you in _delete_ mode, in which you can delete characters from the
-  current line using common vi keybindings. ex: `dw` will delete the word under
-  the cursor.
-
-You can also use the following commands:
-
-- `;quit [message]` will quit the client, sending the optional message to the
-  room.
-
-- `;name <new_username>` will change your name to something stupid.
-
-- `;join <room>` will join the room named `<room>` or create it if it doesn't
-  exist.
-
-- `;priv <user> <message>` will send a private message to the user. The user can
-  be in any room.
-
-- `;who [user]` will show you a list of all users in the server, or all users
-  whose name matches `[user]` (if `[user]` is provided).
-
-- `;rooms [room]` will show you a list of all rooms on the server, or all rooms
-  whose name matches `[room]` (if `[room]` is provided).
-
-- `;block <user>` will block all incoming messages from the user.
-
-- `;unblock <user>` will unblock a blocked user.
-
-If you are the Operator of a Room, you can also use the following commands:
-
-- `;op close` will "close" an open room, preventing anyone without an explicit
-  invitation from entering.
-
-- `;op open` will "open" a closed room, allowing eeryone to enter.
-
-- `;op invite <user>` will send an invitation to the user whose name matches
-  `<user>` (if that user exists).
-
-- `;op kick <user>` will kick the user.
-
-- `;op ban <user>` will ban the user and prevent them from rejoining the room.
-
-- `;op give <user>` will give Operator privileges to the user whose name matches
-  `<user>` (if that user exists).
-
-### Server Instructions
-
-Once you start the server for the first time, it will create a `config.toml` in
-the OS-specific configuration directory. On Linux, this is
-`~/.config/fresh-server/config.toml`. You can edit this file to change the
-server's behavior. The default values are:
-
-```toml
-address = "192.168.1.13:51516"      # The address to listen on
-tick_ms = 500                       # The number of milliseconds between ticks
-time_to_ping_ms  = 10000            # The number of milliseconds between pings
-time_to_kick_ms  = 20000            # The number of milliseconds before kicking a client for not responding to a ping
-max_user_name_length = 24           # The maximum length of a username
-max_room_name_length = 32           # The maximum length of a room name
-lobby_name = 'Lobby'                # The name of the lobby
-welcome_message = "Welcome!"        # The message sent to the client when they connect
-log_file = 'freshd.log'             # The name of the log file
-log_level = 1                       # The log level (0-5)
-byte_limit = 512                    # The number of bytes allowed per quota
-bytes_per_tick = 6                  # The number of bytes to add to the quota per tick
+```rust
+Sndr::Text { who: &'a str, lines: &'a [&'a str] }
 ```
 
-## Network Communication
+Server zpracovává příchozí zprávy přes Rcvr a generuje jednu nebo více odpovědí
+Sndr. Tyto odpovědi jsou zakódovány do JSON a odeslány zpět klientovi.
 
-The network layer of the chat application consists of the protocol and the
-socket. It is responsible for managing the communication between the clients and
-the server.
+Struktura Env obaluje zprávu Sndra určuje zdrojový a cílový koncový bod zprávy,
+kterým může být uživatel, místnost nebo celý server:
 
-The protocol, defined in `proto.rs`, contains two main structures: `Sndr` and
-`Rcvr`. These structures represent messages exchanged between the server and
-clients. The `Sndr` enum is used for sending messages, while the `Rcvr` enum is
-used for receiving messages. Some messages are bi-directional, meaning they can
-be used in both directions, while others are specific to client-to-server or
-server-to-client communication.
+```rust
+pub enum End {    User(u64),    Room(u64),    Server,    All struct Env {    source: End,    dest: End,    data: Vec<u8>  // JSON-encoded Sndr}
+```
 
-The `Socket` struct, defined in `socket.rs`, handles the underlying TCP stream
-and provides methods to read data, write data, and handle incoming messages. The
-`SocketError` struct represents errors that may occur during socket operations.
-The `Socket` struct also offers methods to manage the read and write buffers,
-set buffer sizes, send data in a blocking or non-blocking manner, and manage the
-connection's state.
+Server udržuje objekty User a Room pro každého připojeného klienta a chatovací
+místnost. Když přijde zpráva pro uživatele nebo místnost, je doručena pomocí
+metod User.deliver() a Room.deliver().
 
-Together, the `Socket` and `proto` modules form the network layer of the chat
-application, providing a robust and efficient way to exchange messages between
-clients and the server.
+V případě dotazů od klientů se v odpovědích serveru používají varianty
+Sndr::Info, Sndr::Err a Sndr::Misc, které poskytují strukturovaná data zpět
+klientovi.
 
-### TODO (server):
+Celkově tato architektura umožňuje zachovat jednoduchost klientského kódu tím,
+že většinu logiky deleguje na server.
 
-- IP specific blocks/bans. Server doesn't really know anything about the
-  client's IP address.
+## **III. Architektura serveru**
 
-### TODO (client):
+Server spravuje dva hlavní typy objektů - Users reprezentující připojené klienty
+a Rooms reprezentující chatovací místnosti.
 
-- Show if user is OP in roster
+Ve struktuře User jsou uloženy informace jako:
+
+- Jméno klienta
+- Kumulované bajty načtené z klienta
+- Kvóta bajtů pro omezení rychlosti zpráv
+- Seznam uživatelů, které uživatel zablokoval
+- Paměť zpráv ve frontě k odeslání
+
+Ve struktuře Room jsou zase informace jako:
+
+- Název a ID místnosti
+- Seznam uživatelů, kteří jsou aktuálně v místnosti
+- ID operátora místnosti
+- Zda je místnost otevřená nebo zavřená
+- Seznam zakázaných a pozvaných uživatelů
+
+Když přijde nová zpráva od klienta, server vytvoří strukturu Context, aby měl
+během zpracování zprávy přístup ke stavu serveru:
+
+**struct** Context\<'a\> { rid: u64, _// Aktuální ID místnosti_ uid: u64, _//
+Aktuální ID uživatele_ user\_map: &'a **mut** HashMap\<u64, User\>, ... }
+
+Funkce process\_room() zpracovává všechny zprávy pro danou místnost. Je to:
+
+- Vytáhne ID všech uživatelů, kteří jsou aktuálně v místnosti.
+- Iteruje nad příchozími zprávami každého uživatele.
+- Vytvoří kontext pro aktuálního uživatele
+- Zpracovává příchozí zprávu voláním funkcí jako do\_text() nebo do\_priv().
+- shromažďuje vygenerované odpovědi Sndr v poli Envs
+- doručuje odpovědi příslušným uživatelům nebo celé místnosti.
+
+Tato architektura umožňuje oddělit problémy - User a Room spravují stav, zatímco
+Context zpracovává zprávy pro konkrétního uživatele.
+
+## **IV. Architektura klienta**
+
+Klient používá ke správě uživatelského rozhraní terminálu knihovnu crossterm.
+
+Struktura Screen zachovává:
+
+- Vyrovnávací paměť Lines představující historii chatu.
+- Aktuální vstupní řádek
+- Řádky s názvem a ID na stavovém řádku
+
+Struktura Line zpracovává formátovaný text pomocí escape kódů ANSI a zachovává:
+
+- Vektor znaků představující text
+- Vektor struktur Fmtr, které ukládají informace o formátování v konkrétních
+  indexech.
+
+Po přijetí zprávy ze serveru klient zavolá funkci process\_msg(), aby:
+
+- Parsnul varianty Rcvr
+- Aktualizoval stav Screen
+  - Posunutí nového řádku pro textové zprávy
+  - Aktualizace seznamu uživatelů
+  - Aktualizace stavového řádku pro autentifikační zprávy
+
+Klient zpracovává vstupy od uživatele tak, že:
+
+- Zavolá funkce process\_user\_typing() ve smyčce
+- Volá funkce input\_key() nebo command\_key() v závislosti na aktuálním režimu.
+- Aktualizuje obsah vstupního řádku
+- Změní režimy na základě zadaných kláves
+
+Když uživatel stiskne klávesu Enter, zavolá se funkce
+respond\_to\_user\_input(), která:
+
+- Parsne vstupní řádek jako příkaz nebo text
+- Zavolá příslušnou variantu Sndr::
+- Odešle zprávu na server
+
+Struktura Globals uchovává data sdílená mezi komponentami, jako jsou:
+
+- Uživatelské jméno
+- Aktuální název chatovací místnosti
+- Socket
+- Znak pro příkaz
+
+**Konfigurace a možnosti**
+
+Serverové a klientské aplikace načítají konfiguraci ze souborů .toml.
+
+ServerConfig ukládá:
+
+**[**server**]** address = "127.0.0.1:1234" tick\_ms = 500 time\_to\_ping\_ms =
+10000 time\_to\_kick\_ms = 20000 max\_user\_name\_length = 24
+max\_room\_name\_length = 24 lobby\_name = "Lobby" welcome\_message = "Vítejte
+na serveru." log\_file = "server.log" log\_level = 2 byte\_limit = 512
+bytes\_per\_tick = 6
+
+ClientConfig ukládá:
+
+**[**client**]** address = "127.0.0.1:1234" name = "Joe" tick\_ms = 100
+cmd\_char = '/' roster\_width = 24 read\_size = 1024 max\_scrollback = 2000
+min\_scrollback = 1000
+
+Server a klient volají funkce configure(), aby načetly nastavení buď z
+explicitní cesty, nebo z výchozího umístění.
+
+Argumenty příkazového řádku lze předat také za účelem přepsání konkrétních
+konfiguračních polí.
+
+To umožňuje přizpůsobit chování serverových a klientských aplikací bez nutnosti
+upravovat kód a vytvářet konfigurace pro konkrétní případy použití.
+
+Možnosti konfigurace zahrnují:
+
+- Síťové a časové parametry
+- Možnosti omezení sazeb a kvót
+- Velikosti uživatelského rozhraní
+- Úrovně a cesty protokolu
+- Omezení délky názvu
+
+Výchozí hodnoty mají za cíl poskytnout rozumné počáteční hodnoty, ale většinu
+možností lze pro konkrétní nasazení vyladit.
+
+## **VI. Logování a zpracování chyb**
+
+Aplikace používají k logování balíček simplelog.
+
+Aplikace volá WriteLogger::init(), aby nakonfigurovala úroveň logu a výstup:
+
+simplelog::WriteLogger::init( simplelog::LevelFilter::Trace, simplelog::Config::
+**default** (), std::fs::File::create("app.log").unwrap() ).unwrap();
+
+příklad logování:
+
+log::debug!("Received message: {:?}", msg); log::info!("User {} joined room {}",
+name, room);
+
+Struktura Socket uchovává vektor hodnot SocketError reprezentující chyby, které
+se vyskytly při vstupu/výstupu zásuvky.
+
+Při výskytu chyby v soketu je UserError použit k šíření chyby nahoru po
+zásobníku volání:
+
+**pub enum** UserError { Socket(SocketError), Protocol(String), ... }
+
+**impl** Display **for** UserError { **fn** fmt( **&self** , f: **&mut**
+Formatter\<'\_\>) -\> fmt::Result { **match self** { UserError::Socket(err) =\>
+write!(f, "Socket error: {}", err), ... } } }
+
+To umožňuje oddělit problémy - Socket zpracovává nízkoúrovňové I/O, zatímco User
+a vyšší vrstvy vidí pouze UserError.
+
+Celkově tento přístup poskytuje:
+
+- Konfigurovatelné úrovně protokolu pro různé fáze vývoje
+- ošetření chyb zaměřené na příslušnou abstrakční vrstvu
+
+## **VII. Závěr**
+
+Aplikace Fresh demonstruje několik důležitých technik pro vytváření
+rozšiřitelného kódu:
+
+- Rozdělení kódu do komponent s přesně definovanými rozhraními
+- Použití datových struktur
+- Použití architektury předávání zpráv klient-server
+- Abstrahování nízkoúrovňových detailů za rozumné typy chyb
+- Poskytování konfigurovatelných možností pro přizpůsobení chování
+- Logování s různými úrovněmi.
+
+Ačkoli je původní verze poměrně jednoduchá, obsahuje základy pro mnoho možných
+rozšíření a vylepšení.
+
+Cesta od tohoto výchozího bodu k plnohodnotné chatovací aplikaci by byla skvělou
+zkušeností, která by zahrnovala oblasti jako:
+
+- Distribuované systémy
+- Optimalizace výkonu
+- Osvědčené postupy zabezpečení
+- Škálování na velkou uživatelskou základnu
+- Přijetí nových technologií
+
+Nejdůležitější je nyní pokračovat ve zkoumání, učit se z chyb a aplikaci
+iterativně vylepšovat. Postupem času se kód bude vyvíjet a zlepšovat s tím, jak
+budou růst dovednosti a znalosti.
