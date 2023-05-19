@@ -21,9 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: 📥 Compiling
-        uses: rust-build/rust-build.action@v1.4.3
+        run: cargo build --release --target ${{ matrix.target }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+          CARGO_TARGET_DIR: target/${{ matrix.target }}

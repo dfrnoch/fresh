@@ -22,23 +22,8 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: 🦀 Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
       - name: 🔨 Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build
 
-      - name: 📦 Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-artifact
-          path: target/
-      
       - name: 🧪 Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
