@@ -32,6 +32,12 @@ jobs:
         with:
           command: build
 
+      - name: 📦 Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifact
+          path: target/
+      
       - name: 🧪 Test
         uses: actions-rs/cargo@v1
         with:
