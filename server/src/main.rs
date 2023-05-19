@@ -9,9 +9,10 @@ use common::proto::*;
 use common::room::Room;
 use common::user::*;
 use common::util::collapse;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use simplelog::WriteLogger;
 use std::collections::HashMap;
+use std::error::Error;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
@@ -27,16 +28,21 @@ fn gen_name(init_count: u64, map: &HashMap<String, u64>) -> String {
         n += 1;
     }
 }
-
 fn main() {
+    if let Err(e) = run() {
+        error!("Error: {}", e);
+    }
+}
+
+fn run() -> Result<(), Box<dyn Error>> {
     let cfg: ServerConfig = ServerConfig::configure();
 
     WriteLogger::init(
         cfg.log_level,
         simplelog::Config::default(),
-        std::fs::File::create(&cfg.log_file).unwrap(),
-    )
-    .unwrap();
+        std::fs::File::create(&cfg.log_file)?,
+    )?;
+
     let listen_addr = cfg.address.clone();
 
     info!("Starting server on {}", listen_addr);
@@ -49,11 +55,14 @@ fn main() {
     let mut lobby: Room = Room::new(0, cfg.lobby_name.clone(), 0);
     lobby.leave(0);
     room_map.insert(0, lobby);
-    rstr_map.insert(collapse(&cfg.lobby_name), 0); //this took me a while to figure out :'(
+    rstr_map.insert(collapse(&cfg.lobby_name), 0);
 
     let (usender, urecvr) = mpsc::channel::<User>();
+
     thread::spawn(move || {
-        listen(listen_addr, usender);
+        listen(listen_addr, usender).unwrap_or_else(|e| {
+            error!("listen() encountered an error: {}", e);
+        })
     });
 
     let mut now: Instant;
@@ -111,7 +120,7 @@ fn main() {
                 ));
             } else if user.get_name().len() > cfg.max_user_name_length {
                 rename = Some(format!(
-                    "Your name cannot be longer than {} chars.",
+                    "Your name cannot be longer than {} characters.",
                     cfg.max_user_name_length
                 ));
             } else {
@@ -147,7 +156,7 @@ fn main() {
                 &Sndr::Misc {
                     what: "join",
                     data: &data,
-                    alt: &format!("{} joins {}.", user.get_name(), &cfg.lobby_name),
+                    alt: &format!("{} joined {}.", user.get_name(), &cfg.lobby_name),
                 },
             );
             let lobby = room_map.get_mut(&0).unwrap();

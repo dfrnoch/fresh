@@ -83,7 +83,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
                     screen.set_stat_ur(room_line);
                 } else {
                     sl.pushf(name, &HIGHLIGHT);
-                    sl.push(" joins ");
+                    sl.push(" joined ");
                 }
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
@@ -101,7 +101,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
                 let mut sl = Line::default();
                 sl.push("* ");
                 sl.pushf(name, &HIGHLIGHT);
-                sl.push(" leaves: ");
+                sl.push(" left: ");
                 sl.push(message);
                 global.enqueue_bytes(&ROSTER_REQUEST);
                 screen.push_line(sl);

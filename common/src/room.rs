@@ -51,7 +51,7 @@ impl Room {
                 }
             }
             _ => {
-                for uid in &(self.users) {
+                for uid in &self.users {
                     if let Some(user) = uid_hash.get_mut(uid) {
                         user.deliver(env);
                     }
@@ -66,7 +66,7 @@ impl Room {
 
     /// Deliver all the `Env`s in the queue.
     pub fn deliver_inbox(&mut self, uid_hash: &mut HashMap<u64, User>) {
-        for env in self.inbox.drain(..) {
+        while let Some(env) = self.inbox.pop() {
             match env.dest {
                 End::User(uid) => {
                     if let Some(user) = uid_hash.get_mut(&uid) {
@@ -74,7 +74,7 @@ impl Room {
                     }
                 }
                 _ => {
-                    for uid in &(self.users) {
+                    for uid in &self.users {
                         if let Some(user) = uid_hash.get_mut(uid) {
                             user.deliver(&env);
                         }

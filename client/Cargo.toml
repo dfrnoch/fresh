@@ -1,6 +1,6 @@
 [package]
 name = "fresh-client"
-version = "0.2.0"
+version = "1.0.0"
 authors = ["David Frnoch <frnoch@pm.me>"]
 edition = "2021"
 

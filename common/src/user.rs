@@ -127,10 +127,9 @@ impl User {
     }
 
     pub fn block_id(&mut self, id: u64) -> bool {
-        let res = &(self.blocks).binary_search(&id);
-        match res {
+        match self.blocks.binary_search(&id) {
             Err(n) => {
-                self.blocks.insert(*n, id);
+                self.blocks.insert(n, id);
                 true
             }
             Ok(_) => false,
@@ -138,11 +137,10 @@ impl User {
     }
 
     pub fn unblock_id(&mut self, id: u64) -> bool {
-        let res = &(self.blocks).binary_search(&id);
-        match res {
+        match self.blocks.binary_search(&id) {
             Err(_) => false,
             Ok(n) => {
-                let _ = self.blocks.remove(*n);
+                self.blocks.remove(n);
                 true
             }
         }
@@ -186,11 +184,8 @@ impl User {
                     self.errs.push(e);
                     return Err(err);
                 }
-                Ok(n) => {
-                    if n == 0 {
-                        return Ok(());
-                    }
-                }
+                Ok(0) => return Ok(()),
+                _ => (),
             }
             if start_t.elapsed() > limit {
                 return Err(UserError::new("Timed out on blocking send."));
@@ -202,15 +197,15 @@ impl User {
 
     /// Attempt to read data and decode a `Msg` from the underlying socket.
     pub fn try_get(&mut self) -> Option<Rcvr> {
-        match self.socket.read_data() {
+        let n = match self.socket.read_data() {
             Err(e) => {
                 self.errs.push(e);
                 return None;
             }
-            Ok(n) => {
-                self.bytes_read += n;
-            }
-        }
+            Ok(n) => n,
+        };
+
+        self.bytes_read += n;
 
         let n_buff = self.socket.recv_buff_size();
         if n_buff > 0 {
@@ -235,44 +230,21 @@ impl User {
     }
 
     pub fn blocking_get(&mut self, limit: Duration) -> Result<Rcvr, UserError> {
-        match self.socket.try_get() {
-            Err(e) => {
-                let err = UserError::from_socket(&e);
-                self.errs.push(e);
-                return Err(err);
-            }
-            Ok(msg_opt) => {
-                if let Some(m) = msg_opt {
-                    return Ok(m);
-                }
-            }
-        }
-
         let start_t = Instant::now();
+
         loop {
-            match self.socket.read_data() {
-                Err(e) => {
-                    let err = UserError::from_socket(&e);
-                    self.errs.push(e);
-                    return Err(err);
-                }
-                Ok(n) => {
-                    if n > 0 {
-                        match self.socket.try_get() {
-                            Err(e) => {
-                                let err = UserError::from_socket(&e);
-                                self.errs.push(e);
-                                return Err(err);
-                            }
-                            Ok(opt) => {
-                                if let Some(m) = opt {
-                                    return Ok(m);
-                                }
-                            }
-                        }
-                    }
-                }
+            match self.socket.try_get() {
+                Err(e) => return handle_error(&mut self.errs, e),
+                Ok(Some(m)) => return Ok(m),
+                _ => (),
             }
+
+            match self.socket.read_data() {
+                Err(e) => return handle_error(&mut self.errs, e),
+                Ok(n) if n > 0 => continue,
+                _ => (),
+            }
+
             if start_t.elapsed() > limit {
                 return Err(UserError::new("Timed out on a blocking get."));
             } else {
@@ -280,4 +252,10 @@ impl User {
             }
         }
     }
+}
+
+fn handle_error(errs: &mut Vec<SocketError>, e: SocketError) -> Result<Rcvr, UserError> {
+    let err = UserError::from_socket(&e);
+    errs.push(e);
+    Err(err)
 }

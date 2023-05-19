@@ -118,29 +118,29 @@ impl Screen {
         }
         let new_zero = self.lines.len() - n;
 
-        let temp: Vec<Line> = self.lines.split_off(new_zero);
-        self.lines = temp;
-
+        self.lines.drain(0..new_zero);
         self.lines_dirty = true;
     }
 
     /// Push the supplied line onto the end of the scrollback buffer.
-    pub fn push_line(&mut self, l: Line) {
-        self.lines.push(l);
+    pub fn push_line(&mut self, line: Line) {
+        self.lines.push(line);
         self.lines_dirty = true;
     }
 
     /// Populate the roster with the given slice of strings.
     pub fn set_roster<T: AsRef<str>>(&mut self, items: &[T]) {
-        self.roster = Vec::new();
-        for s in items.iter() {
-            let mut l: Line = Line::default();
-            l.push(s.as_ref());
-            self.roster.push(l);
-        }
+        self.roster = items
+            .iter()
+            .map(|s| {
+                let mut l = Line::default();
+                l.push(s.as_ref());
+                l
+            })
+            .collect();
+
         self.roster_dirty = true;
     }
-
     /// Get number of characters in the input line
     pub fn get_input_length(&self) -> usize {
         self.input.len()
@@ -148,29 +148,28 @@ impl Screen {
 
     /// Add a `char` to the input line.
     pub fn input_char(&mut self, ch: char) {
-        if (self.input_ip as usize) >= self.input.len() {
+        let input_ip = self.input_ip as usize;
+
+        if input_ip >= self.input.len() {
             self.input.push(ch);
-            self.input_ip = self.input.len() as u16;
         } else {
-            self.input.insert(self.input_ip as usize, ch);
-            self.input_ip += 1;
+            self.input.insert(input_ip, ch);
         }
+
+        self.input_ip = (input_ip + 1) as u16;
         self.input_dirty = true;
     }
 
     pub fn input_backspace(&mut self) {
-        let ilen = self.input.len() as u16;
-        if ilen == 0 || self.input_ip == 0 {
+        let ilen = self.input.len();
+        let input_ip = self.input_ip as usize;
+
+        if ilen == 0 || input_ip == 0 {
             return;
         }
 
-        if self.input_ip >= ilen {
-            let _ = self.input.pop();
-            self.input_ip = ilen - 1;
-        } else {
-            self.input_ip -= 1;
-            let _ = self.input.remove(self.input_ip as usize);
-        }
+        self.input_ip = (input_ip - 1) as u16;
+        self.input.remove(input_ip - 1);
         self.input_dirty = true;
     }
 
@@ -304,18 +303,14 @@ impl Screen {
     /// line down.
     pub fn scroll_lines(&mut self, n_chars: i16) {
         let cur = self.lines_scroll as i16;
-        let mut new = cur + n_chars;
-        if new < 0 {
-            new = 0;
-        }
+        let new = (cur + n_chars).max(0);
         self.lines_scroll = new as u16;
         self.lines_dirty = true;
     }
 
     /// Return the contents of the input line as a String and clear the input line.
     pub fn pop_input(&mut self) -> Vec<char> {
-        let mut new_v: Vec<char> = Vec::new();
-        std::mem::swap(&mut new_v, &mut self.input);
+        let new_v = std::mem::take(&mut self.input);
         self.input_ip = 0;
         self.input_dirty = true;
         new_v
@@ -335,16 +330,15 @@ impl Screen {
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {
-        if cols != self.last_x_size {
-            let mut s = String::with_capacity(cols as usize);
-            for _ in 0..cols {
-                s.push(HBAR);
+        if cols != self.last_x_size || rows != self.last_y_size {
+            if cols != self.last_x_size {
+                let horizontal_line =
+                    String::from_iter(std::iter::repeat(HBAR).take(cols as usize));
+                let mut line = Line::default();
+                line.pushf(&horizontal_line, &DIM);
+                self.bits.full_hline = line.first_n_chars(cols as usize).to_string();
             }
-            let mut hl = Line::default();
-            hl.pushf(&s, &DIM);
-            self.bits.full_hline = hl.first_n_chars(cols as usize).to_string();
-        }
-        if (cols != self.last_x_size) || (rows != self.last_y_size) {
+
             self.lines_dirty = true;
             self.input_dirty = true;
             self.roster_dirty = true;
@@ -369,10 +363,10 @@ impl Screen {
             s
         };
         let mut y = height - 1;
-        let w = width as usize;
+        let width = width as usize;
         let mut count_back: u16 = 0;
         for aline in self.lines.iter_mut().rev() {
-            for row in aline.lines(w).iter().rev() {
+            for row in aline.lines(width).iter().rev() {
                 if y == 0 {
                     break;
                 }
@@ -407,18 +401,19 @@ impl Screen {
     fn refresh_roster(
         &mut self,
         term: &mut Stdout,
-        xstart: u16,
+        x_start: u16,
         height: u16,
     ) -> crossterm::Result<()> {
         trace!(
             "Screen::refresh_roster(..., {}, {}) called",
-            &xstart,
+            &x_start,
             &height
         );
-        let rrw: usize = (self.roster_width as usize) + 1;
-        let urw: usize = self.roster_width as usize;
 
-        let blank: String = {
+        let roster_width_with_vbar: usize = (self.roster_width as usize) + 1;
+        let roster_width: usize = self.roster_width as usize;
+
+        let blank_line: String = {
             let mut s = String::default();
             for _ in 0..self.roster_width {
                 s.push(SPACE);
@@ -426,32 +421,37 @@ impl Screen {
             let mut l = Line::default();
             l.pushf(String::from(VBAR), &DIM);
             l.push(&s);
-            l.first_n_chars(rrw).to_string()
+            l.first_n_chars(roster_width_with_vbar).to_string()
         };
+
         let mut y: u16 = 1;
-        let targ_y = height;
-        let us_scroll = self.roster_scroll as usize;
-        for (i, aline) in self.roster.iter_mut().enumerate() {
-            if y == targ_y {
+        let target_y = height;
+        let roster_scroll = self.roster_scroll as usize;
+
+        for (i, line) in self.roster.iter_mut().enumerate() {
+            if y == target_y {
                 break;
             }
-            if i >= us_scroll {
-                term.queue(cursor::MoveTo(xstart, y))?
-                    .queue(style::Print(&blank))?
-                    .queue(cursor::MoveTo(xstart + 1, y))?
-                    .queue(style::Print(aline.first_n_chars(urw)))?;
+            if i >= roster_scroll {
+                term.queue(cursor::MoveTo(x_start, y))?
+                    .queue(style::Print(&blank_line))?
+                    .queue(cursor::MoveTo(x_start + 1, y))?
+                    .queue(style::Print(line.first_n_chars(roster_width)))?;
                 y += 1;
             }
         }
+
         while y < height {
-            term.queue(cursor::MoveTo(xstart, y))?
-                .queue(style::Print(&blank))?;
+            term.queue(cursor::MoveTo(x_start, y))?
+                .queue(style::Print(&blank_line))?;
             y += 1;
         }
+
         self.roster_dirty = false;
         Ok(())
     }
 
+    /// Refresh the screen, if necessary.
     fn refresh_input(&mut self, term: &mut Stdout) -> crossterm::Result<()> {
         term.queue(cursor::MoveTo(0, self.last_y_size - 1))?
             .queue(terminal::Clear(terminal::ClearType::CurrentLine))?
@@ -459,36 +459,29 @@ impl Screen {
 
         let third = self.last_x_size / 3;
         let maxpos = self.last_x_size - third;
-        let startpos = {
-            if self.input.len() < self.last_x_size as usize || self.input_ip < third {
-                0
-            } else if self.input_ip > maxpos {
-                self.input_ip - maxpos
-            } else {
-                self.input_ip - third
-            }
-        };
-
-        let endpos = {
-            if startpos + self.last_x_size > (self.input.len() as u16) {
-                self.input.len() as u16
-            } else {
-                startpos + self.last_x_size
-            }
+        let startpos = if self.input.len() < self.last_x_size as usize || self.input_ip < third {
+            0
+        } else if self.input_ip > maxpos {
+            self.input_ip - maxpos
+        } else {
+            self.input_ip - third
         };
 
         let input_ip_us = self.input_ip as usize;
-        for i in (startpos as usize)..(endpos as usize) {
-            let c = self.input[i];
-            if i == input_ip_us {
-                let cch = style::style(c).attribute(style::Attribute::Reverse);
-                term.queue(style::PrintStyledContent(cch))?;
+        let endpos = ((startpos + self.last_x_size) as usize).min(self.input.len());
+
+        for (i, c) in self.input[startpos as usize..endpos].iter().enumerate() {
+            let i = i + startpos as usize;
+            let c = if i == input_ip_us {
+                style::style(*c).attribute(style::Attribute::Reverse)
             } else {
-                term.queue(style::Print(c))?;
-            }
+                style::style(*c)
+            };
+            term.queue(style::PrintStyledContent(c))?;
         }
+
         if input_ip_us == self.input.len() {
-            let cch = style::style(SPACE).attribute(style::Attribute::Reverse);
+            let cch = style::style(' ').attribute(style::Attribute::Reverse);
             term.queue(style::PrintStyledContent(cch))?;
         }
 
@@ -499,51 +492,51 @@ impl Screen {
     fn refresh_stat(&mut self, term: &mut Stdout) -> crossterm::Result<()> {
         trace!("Screen::refresh_stat(...) called");
 
-        let stat_pad = 2 + self.bits.stat_begin_chars + self.bits.stat_end_chars;
-        let stat_room = (self.last_x_size as usize) - stat_pad;
-        let ll_y = self.last_y_size - 2;
+        let stat_padding = 2 + self.bits.stat_begin_chars + self.bits.stat_end_chars;
+        let stat_width = (self.last_x_size as usize) - stat_padding;
+        let lower_line_y = self.last_y_size - 2;
 
-        term.queue(cursor::MoveTo(0, ll_y))?
+        term.queue(cursor::MoveTo(0, lower_line_y))?
             .queue(style::Print(&self.bits.full_hline))?
-            .queue(cursor::MoveTo(1, ll_y))?
+            .queue(cursor::MoveTo(1, lower_line_y))?
             .queue(style::Print(&self.bits.stat_begin))?
-            .queue(style::Print(self.stat_ll.first_n_chars(stat_room)))?
+            .queue(style::Print(self.stat_ll.first_n_chars(stat_width)))?
             .queue(style::Print(&self.bits.stat_end))?;
 
-        let bits_sum =
-            (3 + (self.bits.stat_begin_chars * 2) + (self.bits.stat_end_chars * 2)) as u16;
-        let tot_space = self.last_x_size - bits_sum;
-        let space_each: usize = (tot_space / 2) as usize;
-        let abbrev_space = space_each - 3;
+        let total_space = self.last_x_size
+            - (3 + (self.bits.stat_begin_chars * 2) + (self.bits.stat_end_chars * 2)) as u16;
+        let space_per_section: usize = (total_space / 2) as usize;
+        let abbreviation_space = space_per_section - 3;
 
         term.queue(cursor::MoveTo(0, 0))?
             .queue(style::Print(&self.bits.full_hline))?
             .queue(cursor::MoveTo(1, 0))?
             .queue(style::Print(&self.bits.stat_begin))?;
-        if self.stat_ul.len() > space_each {
-            term.queue(style::Print(self.stat_ul.first_n_chars(abbrev_space)))?
+        if self.stat_ul.len() > space_per_section {
+            term.queue(style::Print(self.stat_ul.first_n_chars(abbreviation_space)))?
                 .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.stat_ul.first_n_chars(space_each)))?;
+            term.queue(style::Print(self.stat_ul.first_n_chars(space_per_section)))?;
         }
         term.queue(style::Print(&self.bits.stat_end))?;
 
-        let ur_offs: u16 = if self.stat_ur.len() > space_each {
+        let upper_right_offset: u16 = if self.stat_ur.len() > space_per_section {
             self.last_x_size
-                - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_each) as u16
+                - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_per_section)
+                    as u16
         } else {
             self.last_x_size
                 - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + self.stat_ur.len())
                     as u16
         };
 
-        term.queue(cursor::MoveTo(ur_offs, 0))?
+        term.queue(cursor::MoveTo(upper_right_offset, 0))?
             .queue(style::Print(&self.bits.stat_begin))?;
-        if self.stat_ur.len() > space_each {
-            term.queue(style::Print(self.stat_ur.first_n_chars(abbrev_space)))?
+        if self.stat_ur.len() > space_per_section {
+            term.queue(style::Print(self.stat_ur.first_n_chars(abbreviation_space)))?
                 .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.stat_ur.first_n_chars(space_each)))?;
+            term.queue(style::Print(self.stat_ur.first_n_chars(space_per_section)))?;
         }
         term.queue(style::Print(&self.bits.stat_end))?;
 
@@ -562,49 +555,37 @@ impl Screen {
 
     pub fn refresh(&mut self, term: &mut Stdout) -> Result<(), String> {
         trace!("Screen::refresh(...) called");
+
         if !(self.lines_dirty || self.input_dirty || self.roster_dirty || self.stat_dirty) {
             return Ok(());
         }
 
-        let rost_w = self.roster_width + 1;
-        let main_w = self.last_x_size - rost_w;
-        let main_h = self.last_y_size - 2;
+        let roster_width = self.roster_width + 1;
+        let main_width = self.last_x_size - roster_width;
+        let main_height = self.last_y_size - 2;
 
-        if (main_w < 20) || (main_h < 5) {
-            match self.announce_term_too_small(term) {
-                Err(e) => {
-                    return Err(format!("{}", e));
-                }
-                Ok(_) => {
-                    return Ok(());
-                }
-            }
+        if main_width < 20 || main_height < 5 {
+            return self
+                .announce_term_too_small(term)
+                .map_err(|e| format!("{}", e));
         }
 
         if self.input_dirty {
-            if let Err(e) = self.refresh_input(term) {
-                return Err(format!("{}", e));
-            }
+            self.refresh_input(term).map_err(|e| format!("{}", e))?;
         }
         if self.lines_dirty {
-            if let Err(e) = self.refresh_lines(term, main_w, main_h) {
-                return Err(format!("{}", e));
-            }
+            self.refresh_lines(term, main_width, main_height)
+                .map_err(|e| format!("{}", e))?;
         }
         if self.roster_dirty {
-            if let Err(e) = self.refresh_roster(term, main_w, main_h) {
-                return Err(format!("{}", e));
-            }
+            self.refresh_roster(term, main_width, main_height)
+                .map_err(|e| format!("{}", e))?;
         }
         if self.stat_dirty {
-            if let Err(e) = self.refresh_stat(term) {
-                return Err(format!("{}", e));
-            }
+            self.refresh_stat(term).map_err(|e| format!("{}", e))?;
         }
 
-        if let Err(e) = term.flush() {
-            return Err(format!("{}", e));
-        }
+        term.flush().map_err(|e| format!("{}", e))?;
 
         Ok(())
     }

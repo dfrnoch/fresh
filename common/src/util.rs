@@ -1,5 +1,6 @@
 use unicode_normalization::UnicodeNormalization;
 
+/// Collapses a string to a single word, removing whitespace and diacritics.
 pub fn collapse(s: &str) -> String {
     let trimmed = s.trim();
     let lowercase = trimmed.to_lowercase();

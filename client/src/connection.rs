@@ -27,32 +27,21 @@ impl Globals {
 
 /// Attempt to connect to the server.
 pub fn connect(cfg: &ClientConfig) -> Result<Socket, String> {
-    let mut socket: Socket = match TcpStream::connect(&cfg.address) {
-        Err(e) => {
-            return Err(format!("Error connecting to {}: {}", cfg.address, e));
-        }
-        Ok(stream) => match Socket::new(stream) {
-            Err(e) => {
-                return Err(format!("Error setting up socket: {}", e));
-            }
-            Ok(socket) => socket,
-        },
-    };
+    let tcp_stream = TcpStream::connect(&cfg.address)
+        .map_err(|e| format!("Error connecting to {}: {}", cfg.address, e))?;
+
+    let mut socket =
+        Socket::new(tcp_stream).map_err(|e| format!("Error setting up socket: {}", e))?;
+
     let bytes = Sndr::Name(&cfg.name).bytes();
     let res = socket.blocking_send(&bytes, cfg.tick);
 
     if let Err(e) = res {
-        match socket.shutdown() {
-            Err(ee) => {
-                return Err(format!(
-                    "Error in initial protocol: {}; error during shutdown: {}",
-                    e, ee
-                ));
-            }
-            Ok(()) => {
-                return Err(format!("Error in initial protocol: {}", e));
-            }
-        }
+        let shutdown_err = format!("Error in initial protocol: {}", e);
+        socket
+            .shutdown()
+            .map_err(|ee| format!("{}; error during shutdown: {}", shutdown_err, ee))?;
+        return Err(shutdown_err);
     }
 
     Ok(socket)

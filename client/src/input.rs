@@ -61,7 +61,7 @@ fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals
         Mode::Delete => match event.code {
             KeyCode::Char('h') => {
                 screen.input_skip_chars(-1);
-                // scrn.delete_char();
+                // screen.delete_char();
                 global.mode = Mode::Command;
             }
             KeyCode::Char('l') => {
@@ -92,7 +92,6 @@ fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals
 fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) {
     match event.code {
         KeyCode::Enter => respond_to_user_input(screen.pop_input(), screen, global),
-
         KeyCode::Backspace => {
             if screen.get_input_length() == 0 {
                 global.mode = Mode::Command;
@@ -100,11 +99,8 @@ fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) 
                 screen.input_backspace();
             }
         }
-
         KeyCode::Left => screen.input_skip_chars(-1),
-
         KeyCode::Right => screen.input_skip_chars(1),
-
         KeyCode::Esc => {
             global.mode = Mode::Command;
         }
@@ -116,24 +112,22 @@ fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) 
 }
 
 pub fn process_user_typing(screen: &mut Screen, global: &mut Globals) -> crossterm::Result<bool> {
-    let mut should_refresh: bool = false;
+    let mut should_refresh = false;
 
-    while event::poll(Duration::from_millis(0))? {
-        let cur_mode = global.mode;
+    while event::poll(Duration::default())? {
+        let prev_mode = global.mode;
 
-        match event::read()? {
-            Event::Key(event) => {
-                trace!("event: {:?}", event);
-                match global.mode {
-                    Mode::Command | Mode::Delete => command_key(event, screen, global),
-                    Mode::Insert => input_key(event, screen, global),
-                }
+        if let Ok(Event::Key(event)) = event::read() {
+            trace!("event: {:?}", event);
+            match global.mode {
+                Mode::Command | Mode::Delete => command_key(event, screen, global),
+                Mode::Insert => input_key(event, screen, global),
             }
-            Event::Resize(w, h) => screen.resize(w, h),
-            _ => {}
+        } else if let Ok(Event::Resize(w, h)) = event::read() {
+            screen.resize(w, h);
         }
 
-        if cur_mode != global.mode {
+        if prev_mode != global.mode {
             write_mode_line(screen, global);
         }
         should_refresh = true;

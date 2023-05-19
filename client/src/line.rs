@@ -30,11 +30,14 @@ impl Style {
             foreground,
             background,
         };
+
         buff.execute(style::SetColors(colors)).unwrap();
-        if let Some(x) = attributes {
-            for attr in x.iter() {
-                buff.execute(style::SetAttribute(*attr)).unwrap();
-            }
+
+        if let Some(attrs) = attributes {
+            attrs
+                .iter()
+                .try_for_each(|attr| buff.execute(style::SetAttribute(*attr)).map(|_| ()))
+                .unwrap();
         }
 
         Style(String::from_utf8(buff).unwrap())
@@ -56,9 +59,9 @@ struct Fmtr {
 }
 
 impl Fmtr {
-    fn new(i: usize, from: &Style) -> Fmtr {
+    fn new(index: usize, from: &Style) -> Fmtr {
         Fmtr {
-            index: i,
+            index,
             code: from.clone(),
         }
     }
@@ -79,51 +82,53 @@ impl Line {
         self.chars.len()
     }
 
-    pub fn push<T: AsRef<str>>(&mut self, s: T) {
+    pub fn push<T: AsRef<str>>(&mut self, string: T) {
         self.width = None;
         self.nchars = None;
-        for c in s.as_ref().chars() {
+        for c in string.as_ref().chars() {
             self.chars.push(c);
         }
     }
 
     /// Add a chunk of _formatted_ text to the end of the `Line`.
-    pub fn pushf<T: AsRef<str>>(&mut self, s: T, style: &Style) {
+    pub fn pushf<T: AsRef<str>>(&mut self, string: T, style: &Style) {
         self.width = None;
         self.nchars = None;
 
-        let mut n: usize = self.chars.len();
-        self.fdirs.push(Fmtr::new(n, style));
+        let start_index = self.chars.len();
+        self.fdirs.push(Fmtr::new(start_index, style));
 
-        for c in s.as_ref().chars() {
-            self.chars.push(c);
-        }
+        self.chars.extend(string.as_ref().chars());
 
-        n = self.chars.len();
-        self.fdirs.push(Fmtr::new(n, &RESET));
+        let end_index = self.chars.len();
+        self.fdirs.push(Fmtr::new(end_index, &RESET));
     }
 
     fn wrap(&mut self, width: usize) {
         let mut wraps: Vec<usize> = Vec::with_capacity(1 + self.chars.len() / width);
-        let mut x: usize = 0;
-        let mut lws: usize = 0;
+        let mut current_pos: usize = 0;
+        let mut last_whitespace_pos: usize = 0;
         let mut write_leading_ws: bool = true;
 
         trace!("chars: {}", &(self.chars.iter().collect::<String>()));
 
         for (i, c) in self.chars.iter().enumerate() {
-            if x == width {
-                wraps.push(if i - width >= lws { i } else { lws });
-                x = i - lws;
+            if current_pos == width {
+                wraps.push(if i - width >= last_whitespace_pos {
+                    i
+                } else {
+                    last_whitespace_pos
+                });
+                current_pos = i - last_whitespace_pos;
                 write_leading_ws = false;
             }
 
-            if (x > 0 || write_leading_ws) || !c.is_whitespace() {
-                x += 1;
+            if (current_pos > 0 || write_leading_ws) || !c.is_whitespace() {
+                current_pos += 1;
             }
 
             if c.is_whitespace() {
-                lws = i;
+                last_whitespace_pos = i;
             }
         }
 
@@ -177,34 +182,34 @@ impl Line {
     }
 
     fn render_n_chars(&mut self, n: usize) {
-        let mut s = String::default();
-        let mut fmt_iter = self.fdirs.iter().peekable();
+        let mut rendered_string = String::default();
+        let mut format_iter = self.fdirs.iter().peekable();
 
-        for (i, c) in self.chars[..n].iter().enumerate() {
-            while let Some(f) = fmt_iter.peek() {
-                if f.index == i {
-                    s.push_str(&f.code);
-                    fmt_iter.next();
+        for (i, &c) in self.chars[..n].iter().enumerate() {
+            while let Some(format) = format_iter.peek() {
+                if format.index == i {
+                    rendered_string.push_str(&format.code);
+                    format_iter.next();
                 } else {
                     break;
                 }
             }
-            s.push(*c);
+            rendered_string.push(c);
         }
 
-        for f in fmt_iter {
-            s.push_str(&f.code);
+        for format in format_iter {
+            rendered_string.push_str(&format.code);
         }
 
         self.nchars = Some(n);
-        self.nchars_render = s;
+        self.nchars_render = rendered_string;
     }
 
     pub fn first_n_chars(&mut self, n: usize) -> &str {
-        let tgt = n.min(self.chars.len());
+        let target = n.min(self.chars.len());
 
-        if self.nchars.map_or(true, |i| tgt != i) {
-            self.render_n_chars(tgt);
+        if self.nchars.map_or(true, |i| target != i) {
+            self.render_n_chars(target);
         }
 
         &self.nchars_render

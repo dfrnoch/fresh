@@ -69,24 +69,21 @@ pub struct Socket {
 
 impl Socket {
     pub fn new(stream: TcpStream) -> Result<Socket, SocketError> {
-        if let Err(e) = stream.set_nodelay(true) {
-            return Err(SocketError::from_err(SocketErrorKind::SetNoDelayFailed, &e));
-        }
-        if let Err(e) = stream.set_nonblocking(true) {
-            return Err(SocketError::from_err(
-                SocketErrorKind::SetNonBlockingFailed,
-                &e,
-            ));
-        }
-        let mut new_buff: Vec<u8> = vec![0; DEFAULT_BUFFER_SIZE];
-        new_buff.resize(DEFAULT_BUFFER_SIZE, 0u8);
-        let s = Socket {
+        stream
+            .set_nodelay(true)
+            .map_err(|e| SocketError::from_err(SocketErrorKind::SetNoDelayFailed, &e))?;
+        stream
+            .set_nonblocking(true)
+            .map_err(|e| SocketError::from_err(SocketErrorKind::SetNonBlockingFailed, &e))?;
+
+        let read_buff = vec![0; DEFAULT_BUFFER_SIZE];
+
+        Ok(Socket {
             stream,
-            read_buff: new_buff,
+            read_buff,
             current: Vec::<u8>::new(),
             send_buff: Vec::<u8>::new(),
-        };
-        Ok(s)
+        })
     }
 
     pub fn shutdown(&mut self) -> Result<(), SocketError> {
@@ -107,47 +104,43 @@ impl Socket {
     /// Attempts to read data from the underlying socket into the read buffer.
     pub fn read_data(&mut self) -> Result<usize, SocketError> {
         match self.stream.read(&mut self.read_buff) {
+            Ok(bytes_read) => {
+                if bytes_read > 0 {
+                    self.current
+                        .extend_from_slice(&self.read_buff[..bytes_read]);
+                }
+                Ok(bytes_read)
+            }
             Err(e) => match e.kind() {
-                std::io::ErrorKind::WouldBlock => Ok(0),
-                std::io::ErrorKind::Interrupted => Ok(0),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted => Ok(0),
                 _ => Err(SocketError::from_err(SocketErrorKind::ReadFailed, &e)),
             },
-            Ok(n) => {
-                if n > 0 {
-                    self.current.extend_from_slice(&self.read_buff[..n]);
-                }
-                Ok(n)
-            }
         }
     }
 
     pub fn try_get(&mut self) -> Result<Option<Rcvr>, SocketError> {
-        let offs;
-        let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current);
-        match maybe_msg {
-            Ok(m) => {
+        match serde_json::from_slice::<Rcvr>(&self.current) {
+            Ok(msg) => {
                 self.current.clear();
-                return Ok(Some(m));
+                Ok(Some(msg))
             }
             Err(e) => match e.classify() {
-                Category::Eof => {
-                    return Ok(None);
-                }
-
-                Category::Syntax => {
-                    offs = get_offset(&self.current, &e).unwrap();
-                }
-                _ => {
-                    return Err(SocketError::from_err(SocketErrorKind::SyntaxError, &e));
-                }
+                Category::Eof => Ok(None),
+                Category::Syntax => match get_offset(&self.current, &e) {
+                    Ok(offset) => {
+                        let msg_result =
+                            serde_json::from_slice::<Rcvr>(&self.current[..offset]).map(Some);
+                        self.current.drain(0..offset);
+                        msg_result.map_err(|err| {
+                            SocketError::from_err(SocketErrorKind::SyntaxError, &err)
+                        })
+                    }
+                    Err(_) => Err(SocketError::from_err(SocketErrorKind::SyntaxError, &e)),
+                },
+                _ => Err(SocketError::from_err(SocketErrorKind::SyntaxError, &e)),
             },
         }
-
-        let maybe_msg = serde_json::from_slice::<Rcvr>(&self.current[..offs]).map(Some);
-        self.current = self.current.split_off(offs);
-        maybe_msg.map_err(|e| SocketError::from_err(SocketErrorKind::SyntaxError, &e))
     }
-
     pub fn enqueue(&mut self, data: &[u8]) {
         self.send_buff.extend_from_slice(data);
     }
@@ -158,23 +151,23 @@ impl Socket {
     /// `.shutdown()`.
     /// A return value of `Ok(0)` means the send buffer is empty.
     pub fn send_data(&mut self) -> Result<usize, SocketError> {
-        let res = self.stream.write(&self.send_buff);
-
-        match res {
-            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => Ok(self.send_buff.len()),
-            Err(e) => Err(SocketError::from_err(SocketErrorKind::WriteFailed, &e)),
-            Ok(n) => {
-                if n == self.send_buff.len() {
+        match self.stream.write(&self.send_buff) {
+            Ok(bytes_written) => {
+                if bytes_written == self.send_buff.len() {
                     self.stream
                         .flush()
                         .map_err(|e| SocketError::from_err(SocketErrorKind::FlushFailed, &e))?;
                     self.send_buff.clear();
                     Ok(0)
                 } else {
-                    self.send_buff = self.send_buff.split_off(n);
+                    self.send_buff.drain(0..bytes_written);
                     Ok(self.send_buff.len())
                 }
             }
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::Interrupted => Ok(self.send_buff.len()),
+                _ => Err(SocketError::from_err(SocketErrorKind::WriteFailed, &e)),
+            },
         }
     }
 
