@@ -31,7 +31,7 @@ jobs:
 
       - name: 📦 Create Archive
         run: |
-          cd $CARGO_TARGET_DIR/release
+          cd target/${{ matrix.target }}/release
           if [[ "${{ matrix.archive }}" == "zip" ]]; then
             zip -r ${{ matrix.target }}.zip *
           else
