@@ -139,7 +139,8 @@ fn run() -> Result<(), Box<dyn Error>> {
                 user.deliver_msg(&msg);
                 let original_name = user.get_name().to_string();
                 let data: [&str; 2] = [&original_name, &suggested_new_name];
-                let user_notification = format!("You are now known as \"{}\".", &suggested_new_name);
+                let user_notification =
+                    format!("You are now known as \"{}\".", &suggested_new_name);
                 let msg = Sndr::Misc {
                     what: "name",
                     data: &data,

@@ -35,9 +35,12 @@ impl<'a> Context<'a> {
     }
 
     fn get_room_by_id(&self, room_id: u64) -> Result<&Room, String> {
-        self.rooms_by_id
-            .get(&room_id)
-            .ok_or_else(|| format!("Context {:?}.get_room_by_id({}) returns None", &self, &room_id))
+        self.rooms_by_id.get(&room_id).ok_or_else(|| {
+            format!(
+                "Context {:?}.get_room_by_id({}) returns None",
+                &self, &room_id
+            )
+        })
     }
 
     fn get_user_by_id_mut(&mut self, user_id: u64) -> Result<&mut User, String> {

@@ -113,7 +113,8 @@ fn main() {
 
     {
         let mut terminal_handle = stdout();
-        let mut terminal_screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width) {
+        let mut terminal_screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width)
+        {
             Ok(x) => x,
             Err(e) => {
                 println!("Error setting up terminal: {}", e);
@@ -192,7 +193,8 @@ fn main() {
                                 break 'msg_loop;
                             }
                             Ok(Some(message)) => {
-                                match process_msg(message, &mut terminal_screen, &mut client_state) {
+                                match process_msg(message, &mut terminal_screen, &mut client_state)
+                                {
                                     Ok(()) => {
                                         if !client_state.running {
                                             break 'main_loop;
