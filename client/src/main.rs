@@ -16,7 +16,7 @@ use clap::Parser;
 use common::config::ClientConfig;
 use common::proto::Sndr;
 use common::socket::Socket;
-use connection::ClientState;
+use connection::State;
 use lazy_static::lazy_static;
 use log::{debug, error};
 use std::io::stdout;
@@ -99,7 +99,7 @@ fn main() {
     }
     println!("...success. Initializing terminal.");
 
-    let mut client_state: ClientState = ClientState {
+    let mut state = State {
         username: cfg.name.clone(),
         room_name: String::from("Lobby"),
         mode: Mode::Insert,
@@ -113,7 +113,8 @@ fn main() {
 
     {
         let mut terminal_handle = stdout();
-        let mut terminal_screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width) {
+        let mut terminal_screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width)
+        {
             Ok(x) => x,
             Err(e) => {
                 println!("Error setting up terminal: {}", e);
@@ -122,32 +123,32 @@ fn main() {
         };
 
         let mut server_address_line = Line::default();
-        server_address_line.pushf(&client_state.server_address, &HIGHLIGHT);
+        server_address_line.pushf(&state.server_address, &HIGHLIGHT);
         terminal_screen.set_stat_ul(server_address_line);
 
         let mut current_room_line = Line::default();
-        current_room_line.pushf(&client_state.room_name, &HIGHLIGHT);
+        current_room_line.pushf(&state.room_name, &HIGHLIGHT);
         terminal_screen.set_stat_ur(current_room_line);
-        write_mode_line(&mut terminal_screen, &client_state);
+        write_mode_line(&mut terminal_screen, &state);
 
         'main_loop: loop {
             let loop_timer = Instant::now();
 
             'input_loop: loop {
-                match process_user_typing(&mut terminal_screen, &mut client_state) {
+                match process_user_typing(&mut terminal_screen, &mut state) {
                     Err(e) => {
-                        client_state
+                        state
                             .buffered_messages
                             .push(format!("Error getting event from keyboard: {}", e));
                         break 'main_loop;
                     }
                     Ok(true) => {
                         if let Err(e) = terminal_screen.refresh(&mut terminal_handle) {
-                            client_state
+                            state
                                 .buffered_messages
                                 .push(format!("Error refreshing screen: {}", e));
                             break 'main_loop;
-                        } else if !client_state.running {
+                        } else if !state.running {
                             break 'main_loop;
                         }
                     }
@@ -157,10 +158,10 @@ fn main() {
                 }
             }
 
-            let outgoing_bytes = client_state.socket.send_buff_size();
-            match client_state.socket.send_data() {
+            let outgoing_bytes = state.socket.send_buff_size();
+            match state.socket.send_data() {
                 Err(e) => {
-                    client_state.buffered_messages.push(format!("{}", e));
+                    state.buffered_messages.push(format!("{}", e));
                     break 'main_loop;
                 }
                 Ok(n) => {
@@ -172,29 +173,29 @@ fn main() {
             }
 
             // Try to read from the byte stream incoming from the server.
-            let read_result = client_state.socket.read_data();
+            let read_result = state.socket.read_data();
             match read_result {
                 Err(e) => {
-                    client_state.buffered_messages.push(format!("{}", e));
+                    state.buffered_messages.push(format!("{}", e));
                     break 'main_loop;
                 }
                 Ok(0) => {}
                 Ok(n) => {
                     debug!("Socket::read_data() huffed {} bytes.", n);
                     'msg_loop: loop {
-                        let message_result = client_state.socket.try_get();
+                        let message_result = state.socket.try_get();
                         match message_result {
                             Err(e) => {
-                                client_state.buffered_messages.push(format!("{}", e));
+                                state.buffered_messages.push(format!("{}", e));
                                 break 'main_loop;
                             }
                             Ok(None) => {
                                 break 'msg_loop;
                             }
                             Ok(Some(message)) => {
-                                match process_msg(message, &mut terminal_screen, &mut client_state) {
+                                match process_msg(message, &mut terminal_screen, &mut state) {
                                     Ok(()) => {
-                                        if !client_state.running {
+                                        if !state.running {
                                             break 'main_loop;
                                         }
                                     }
@@ -213,7 +214,7 @@ fn main() {
             }
 
             if let Err(e) = terminal_screen.refresh(&mut terminal_handle) {
-                client_state
+                state
                     .buffered_messages
                     .push(format!("Error refreshing screen: {}", e));
                 break 'main_loop;
@@ -226,7 +227,7 @@ fn main() {
         }
     }
 
-    for message in &client_state.buffered_messages {
+    for message in &state.buffered_messages {
         println!("{}", &message);
     }
 }

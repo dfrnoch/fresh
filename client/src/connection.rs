@@ -2,7 +2,7 @@ use crate::input::Mode;
 use common::{config::ClientConfig, proto::Sndr, socket::Socket};
 use std::net::TcpStream;
 
-pub struct ClientState {
+pub struct State {
     pub username: String,
     pub room_name: String,
     pub mode: Mode,
@@ -14,7 +14,7 @@ pub struct ClientState {
     pub running: bool,
 }
 
-impl ClientState {
+impl State {
     pub fn enqueue(&mut self, msg: &Sndr) {
         let bytes = msg.bytes();
         self.socket.enqueue(&bytes);

@@ -1,5 +1,5 @@
 use crate::{
-    connection::ClientState,
+    connection::State,
     input::write_mode_line,
     line::Line,
     screen::Screen,
@@ -13,11 +13,11 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientState) -> Result<(), String> {
+pub fn process_msg(msg: Rcvr, screen: &mut Screen, state: &mut State) -> Result<(), String> {
     debug!("process_msg(...): rec'd: {:?}", &msg);
     match msg {
         Rcvr::Ping => {
-            client_state.socket.enqueue(&PING);
+            state.socket.enqueue(&PING);
         }
 
         Rcvr::Text { who, lines } => {
@@ -40,8 +40,8 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
         }
 
         Rcvr::Logout(s) => {
-            client_state.buffered_messages.push(s);
-            client_state.running = false;
+            state.buffered_messages.push(s);
+            state.running = false;
         }
 
         Rcvr::Info(s) => {
@@ -72,14 +72,14 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 };
                 let mut sl = Line::default();
                 sl.push("* ");
-                if name.as_str() == client_state.username.as_str() {
+                if name.as_str() == state.username.as_str() {
                     sl.pushf("You", &BOLD);
                     sl.push(" joined ");
 
                     // Update the room name in the status bar.
-                    client_state.room_name = room.to_string();
+                    state.room_name = room.to_string();
                     let mut room_line = Line::default();
-                    room_line.pushf(&client_state.room_name, &HIGHLIGHT);
+                    room_line.pushf(&state.room_name, &HIGHLIGHT);
                     screen.set_stat_ur(room_line);
                 } else {
                     sl.pushf(name, &HIGHLIGHT);
@@ -87,7 +87,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 }
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
-                client_state.enqueue_bytes(&ROSTER_REQUEST);
+                state.enqueue_bytes(&ROSTER_REQUEST);
                 screen.push_line(sl);
             }
 
@@ -103,7 +103,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 sl.pushf(name, &HIGHLIGHT);
                 sl.push(" left: ");
                 sl.push(message);
-                client_state.enqueue_bytes(&ROSTER_REQUEST);
+                state.enqueue_bytes(&ROSTER_REQUEST);
                 screen.push_line(sl);
             }
 
@@ -134,11 +134,11 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
 
                 let mut sl = Line::default();
                 sl.push("* ");
-                if old.as_str() == client_state.username.as_str() {
+                if old.as_str() == state.username.as_str() {
                     sl.pushf("You", &BOLD);
                     sl.push(" are now known as ");
-                    client_state.username.clone_from(new);
-                    write_mode_line(screen, client_state);
+                    state.username.clone_from(new);
+                    write_mode_line(screen, state);
                 } else {
                     sl.pushf(old, &HIGHLIGHT);
                     sl.push(" is now known as ");
@@ -146,7 +146,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 sl.pushf(new, &HIGHLIGHT);
                 sl.push(".");
                 screen.push_line(sl);
-                client_state.enqueue_bytes(&ROSTER_REQUEST);
+                state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
             "new_op" => {
@@ -159,7 +159,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
 
                 let mut sl = Line::default();
                 sl.push("* ");
-                if name == &client_state.username {
+                if name == &state.username {
                     sl.pushf("You", &BOLD);
                     sl.push(" are now the operator of ");
                 } else {
@@ -169,7 +169,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 sl.pushf(room, &BOLD);
                 sl.push(".");
                 screen.push_line(sl);
-                client_state.enqueue_bytes(&ROSTER_REQUEST);
+                state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
             "roster" => {
@@ -194,7 +194,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
                 screen.push_line(sl);
-                client_state.enqueue_bytes(&ROSTER_REQUEST);
+                state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
             "kick_you" => {
@@ -218,8 +218,8 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
                     return Err(format!("Incomplete data: {:?}", &msg));
                 }
                 Some(addr) => {
-                    client_state.local_address.clone_from(addr);
-                    write_mode_line(screen, client_state);
+                    state.local_address.clone_from(addr);
+                    write_mode_line(screen, state);
                 }
             },
 
@@ -251,9 +251,9 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
 
 /// In input mode, when the user hits return, this processes processes the
 /// content of the input line and decides what to do.
-pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state: &mut ClientState) {
+pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, state: &mut State) {
     if let Some(char) = input.first() {
-        if *char == client_state.cmd {
+        if *char == state.cmd {
             if input.len() == 1 {
                 return;
             }
@@ -297,7 +297,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
                 }
                 "quit" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Logout(&arg));
+                        state.enqueue(&Sndr::Logout(&arg));
                     }
                     Err(_) => {
                         return;
@@ -306,7 +306,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "priv" => match split_command_tokens(&cmd_toks, 2) {
                     Ok((cmds, arg)) => {
-                        client_state.enqueue(&Sndr::Priv {
+                        state.enqueue(&Sndr::Priv {
                             who: cmds[1],
                             text: &arg,
                         });
@@ -323,7 +323,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "name" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Name(&arg));
+                        state.enqueue(&Sndr::Name(&arg));
                     }
                     Err(_) => {
                         return;
@@ -332,7 +332,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "join" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Join(&arg));
+                        state.enqueue(&Sndr::Join(&arg));
                     }
                     Err(_) => {
                         return;
@@ -341,7 +341,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "who" | "rooms" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Query {
+                        state.enqueue(&Sndr::Query {
                             what: &cmd,
                             arg: &arg,
                         });
@@ -353,7 +353,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "block" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Block(&arg));
+                        state.enqueue(&Sndr::Block(&arg));
                     }
                     Err(_) => {
                         return;
@@ -362,7 +362,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
 
                 "unblock" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
-                        client_state.enqueue(&Sndr::Unblock(&arg));
+                        state.enqueue(&Sndr::Unblock(&arg));
                     }
                     Err(_) => {
                         return;
@@ -390,7 +390,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
                             }
                         };
                         if let Some(m) = msg {
-                            client_state.enqueue(&m);
+                            state.enqueue(&m);
                         }
                     }
                 },
@@ -410,7 +410,7 @@ pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state
     let lines: Vec<String> = input_str.lines().map(|line| line.to_string()).collect();
     let lineref: Vec<&str> = lines.iter().map(|x| x.as_str()).collect();
 
-    client_state.enqueue(&Sndr::Text {
+    state.enqueue(&Sndr::Text {
         who: "",
         lines: &lineref,
     });
