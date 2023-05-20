@@ -13,7 +13,11 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(msg: Rcvr, terminal_screen: &mut Screen, state: &mut State) -> Result<(), String> {
+pub fn process_msg(
+    msg: Rcvr,
+    terminal_screen: &mut Screen,
+    state: &mut State,
+) -> Result<(), String> {
     debug!("process_msg(...): rec'd: {:?}", &msg);
     match msg {
         Rcvr::Ping => {
@@ -417,7 +421,10 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
 }
 
 /// Split a vector of &str into a vector of commands and a single argument.
-fn split_command_tokens<'a>(tokenized_input: &'a [&str], required_command_tokens: usize) -> Result<(Vec<&'a str>, String), ()> {
+fn split_command_tokens<'a>(
+    tokenized_input: &'a [&str],
+    required_command_tokens: usize,
+) -> Result<(Vec<&'a str>, String), ()> {
     if required_command_tokens == 0 || tokenized_input.len() < required_command_tokens {
         return Err(());
     }

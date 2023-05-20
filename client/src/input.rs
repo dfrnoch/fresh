@@ -91,7 +91,9 @@ fn command_key(event: event::KeyEvent, terminal_screen: &mut Screen, state: &mut
 
 fn input_key(event: event::KeyEvent, terminal_screen: &mut Screen, state: &mut State) {
     match event.code {
-        KeyCode::Enter => respond_to_user_input(terminal_screen.pop_input(), terminal_screen, state),
+        KeyCode::Enter => {
+            respond_to_user_input(terminal_screen.pop_input(), terminal_screen, state)
+        }
         KeyCode::Backspace => {
             if terminal_screen.get_input_length() == 0 {
                 state.mode = Mode::Command;
@@ -111,7 +113,10 @@ fn input_key(event: event::KeyEvent, terminal_screen: &mut Screen, state: &mut S
     }
 }
 
-pub fn process_user_typing(terminal_screen: &mut Screen, state: &mut State) -> crossterm::Result<bool> {
+pub fn process_user_typing(
+    terminal_screen: &mut Screen,
+    state: &mut State,
+) -> crossterm::Result<bool> {
     let mut should_refresh = false;
 
     while event::poll(Duration::default())? {
