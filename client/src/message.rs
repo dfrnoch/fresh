@@ -1,5 +1,5 @@
 use crate::{
-    connection::Globals,
+    connection::ClientState,
     input::write_mode_line,
     line::Line,
     screen::Screen,
@@ -13,7 +13,7 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Result<(), String> {
+pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut ClientState) -> Result<(), String> {
     debug!("process_msg(...): rec'd: {:?}", &msg);
     match msg {
         Rcvr::Ping => {
@@ -40,8 +40,8 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
         }
 
         Rcvr::Logout(s) => {
-            global.messages.push(s);
-            global.run = false;
+            global.buffered_messages.push(s);
+            global.running = false;
         }
 
         Rcvr::Info(s) => {
@@ -72,14 +72,14 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
                 };
                 let mut sl = Line::default();
                 sl.push("* ");
-                if name.as_str() == global.uname.as_str() {
+                if name.as_str() == global.username.as_str() {
                     sl.pushf("You", &BOLD);
                     sl.push(" joined ");
 
                     // Update the room name in the status bar.
-                    global.rname = room.to_string();
+                    global.room_name = room.to_string();
                     let mut room_line = Line::default();
-                    room_line.pushf(&global.rname, &HIGHLIGHT);
+                    room_line.pushf(&global.room_name, &HIGHLIGHT);
                     screen.set_stat_ur(room_line);
                 } else {
                     sl.pushf(name, &HIGHLIGHT);
@@ -134,10 +134,10 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
 
                 let mut sl = Line::default();
                 sl.push("* ");
-                if old.as_str() == global.uname.as_str() {
+                if old.as_str() == global.username.as_str() {
                     sl.pushf("You", &BOLD);
                     sl.push(" are now known as ");
-                    global.uname.clone_from(new);
+                    global.username.clone_from(new);
                     write_mode_line(screen, global);
                 } else {
                     sl.pushf(old, &HIGHLIGHT);
@@ -159,7 +159,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
 
                 let mut sl = Line::default();
                 sl.push("* ");
-                if name == &global.uname {
+                if name == &global.username {
                     sl.pushf("You", &BOLD);
                     sl.push(" are now the operator of ");
                 } else {
@@ -218,7 +218,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
                     return Err(format!("Incomplete data: {:?}", &msg));
                 }
                 Some(addr) => {
-                    global.local_addr.clone_from(addr);
+                    global.local_address.clone_from(addr);
                     write_mode_line(screen, global);
                 }
             },
@@ -251,7 +251,7 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, global: &mut Globals) -> Resu
 
 /// In input mode, when the user hits return, this processes processes the
 /// content of the input line and decides what to do.
-pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut Globals) {
+pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, global: &mut ClientState) {
     if let Some(char) = input.first() {
         if *char == global.cmd {
             if input.len() == 1 {

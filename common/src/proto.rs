@@ -144,8 +144,7 @@ pub enum End {
     All,
 }
 
-/// Env is a message envelope. It contains the source and destination
-/// endpoints, as well as the message data.
+/// The `Env` struct represents a message sent between two `End`s.
 #[derive(Clone, Debug)]
 pub struct Env {
     pub source: End,

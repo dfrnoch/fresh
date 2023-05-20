@@ -7,8 +7,8 @@ lazy_static! {
     static ref RESET: Style = {
         use crossterm::{style, ExecutableCommand};
         let mut buff: Vec<u8> = Vec::new();
-        let cols = style::Colors::new(style::Color::Reset, style::Color::Reset);
-        buff.execute(style::SetColors(cols)).unwrap();
+        let color_codes = style::Colors::new(style::Color::Reset, style::Color::Reset);
+        buff.execute(style::SetColors(color_codes)).unwrap();
         buff.execute(style::SetAttribute(style::Attribute::Reset))
             .unwrap();
         Style(String::from_utf8(buff).unwrap())
@@ -70,11 +70,11 @@ impl Fmtr {
 #[derive(Default)]
 pub struct Line {
     chars: Vec<char>,
-    width: Option<usize>,
-    nchars: Option<usize>,
-    fdirs: Vec<Fmtr>,
-    render: Vec<String>,
-    nchars_render: String,
+    max_line_width: Option<usize>,
+    num_characters: Option<usize>,
+    format_directions: Vec<Fmtr>,
+    rendered_lines: Vec<String>,
+    rendered_substring: String,
 }
 
 impl Line {
@@ -83,8 +83,8 @@ impl Line {
     }
 
     pub fn push<T: AsRef<str>>(&mut self, string: T) {
-        self.width = None;
-        self.nchars = None;
+        self.max_line_width = None;
+        self.num_characters = None;
         for c in string.as_ref().chars() {
             self.chars.push(c);
         }
@@ -92,23 +92,23 @@ impl Line {
 
     /// Add a chunk of _formatted_ text to the end of the `Line`.
     pub fn pushf<T: AsRef<str>>(&mut self, string: T, style: &Style) {
-        self.width = None;
-        self.nchars = None;
+        self.max_line_width = None;
+        self.num_characters = None;
 
         let start_index = self.chars.len();
-        self.fdirs.push(Fmtr::new(start_index, style));
+        self.format_directions.push(Fmtr::new(start_index, style));
 
         self.chars.extend(string.as_ref().chars());
 
         let end_index = self.chars.len();
-        self.fdirs.push(Fmtr::new(end_index, &RESET));
+        self.format_directions.push(Fmtr::new(end_index, &RESET));
     }
 
     fn wrap(&mut self, width: usize) {
         let mut wraps: Vec<usize> = Vec::with_capacity(1 + self.chars.len() / width);
         let mut current_pos: usize = 0;
         let mut last_whitespace_pos: usize = 0;
-        let mut write_leading_ws: bool = true;
+        let mut include_leading_whitespace: bool = true;
 
         trace!("chars: {}", &(self.chars.iter().collect::<String>()));
 
@@ -120,10 +120,10 @@ impl Line {
                     last_whitespace_pos
                 });
                 current_pos = i - last_whitespace_pos;
-                write_leading_ws = false;
+                include_leading_whitespace = false;
             }
 
-            if (current_pos > 0 || write_leading_ws) || !c.is_whitespace() {
+            if (current_pos > 0 || include_leading_whitespace) || !c.is_whitespace() {
                 current_pos += 1;
             }
 
@@ -134,56 +134,56 @@ impl Line {
 
         trace!("wraps at: {:?}", &wraps);
 
-        self.render = Vec::with_capacity(wraps.len() + 1);
-        let mut fmt_iter = self.fdirs.iter().peekable();
-        let mut cur_line = String::with_capacity(width);
-        write_leading_ws = true;
-        let mut wrap_idx: usize = 0;
-        let mut line_len: usize = 0;
+        self.rendered_lines = Vec::with_capacity(wraps.len() + 1);
+        let mut fmt_iter = self.format_directions.iter().peekable();
+        let mut current_line = String::with_capacity(width);
+        include_leading_whitespace = true;
+        let mut line_wrap_index: usize = 0;
+        let mut current_line_length: usize = 0;
 
         for (i, c) in self.chars.iter().enumerate() {
-            if wrap_idx < wraps.len() && wraps[wrap_idx] == i {
-                self.render.push(cur_line.clone());
-                cur_line.clear();
-                write_leading_ws = false;
-                wrap_idx += 1;
-                line_len = 0;
+            if line_wrap_index < wraps.len() && wraps[line_wrap_index] == i {
+                self.rendered_lines.push(current_line.clone());
+                current_line.clear();
+                include_leading_whitespace = false;
+                line_wrap_index += 1;
+                current_line_length = 0;
             }
 
             while let Some(f) = fmt_iter.peek() {
                 if f.index == i {
-                    cur_line.push_str(&f.code);
+                    current_line.push_str(&f.code);
                     fmt_iter.next();
                 } else {
                     break;
                 }
             }
 
-            if line_len > 0 || write_leading_ws || !c.is_whitespace() {
-                cur_line.push(*c);
-                line_len += 1;
+            if current_line_length > 0 || include_leading_whitespace || !c.is_whitespace() {
+                current_line.push(*c);
+                current_line_length += 1;
             }
         }
 
         for f in fmt_iter {
-            cur_line.push_str(&f.code);
+            current_line.push_str(&f.code);
         }
 
-        self.render.push(cur_line);
-        self.width = Some(width);
+        self.rendered_lines.push(current_line);
+        self.max_line_width = Some(width);
     }
 
     pub fn lines(&mut self, width: usize) -> &[String] {
-        if self.width.map_or(true, |n| n != width) {
+        if self.max_line_width.map_or(true, |n| n != width) {
             self.wrap(width);
         }
 
-        &self.render
+        &self.rendered_lines
     }
 
     fn render_n_chars(&mut self, n: usize) {
         let mut rendered_string = String::default();
-        let mut format_iter = self.fdirs.iter().peekable();
+        let mut format_iter = self.format_directions.iter().peekable();
 
         for (i, &c) in self.chars[..n].iter().enumerate() {
             while let Some(format) = format_iter.peek() {
@@ -201,17 +201,17 @@ impl Line {
             rendered_string.push_str(&format.code);
         }
 
-        self.nchars = Some(n);
-        self.nchars_render = rendered_string;
+        self.num_characters = Some(n);
+        self.rendered_substring = rendered_string;
     }
 
     pub fn first_n_chars(&mut self, n: usize) -> &str {
-        let target = n.min(self.chars.len());
+        let substring_length = n.min(self.chars.len());
 
-        if self.nchars.map_or(true, |i| target != i) {
-            self.render_n_chars(target);
+        if self.num_characters.map_or(true, |i| substring_length != i) {
+            self.render_n_chars(substring_length);
         }
 
-        &self.nchars_render
+        &self.rendered_substring
     }
 }

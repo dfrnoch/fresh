@@ -46,28 +46,28 @@ impl std::error::Error for UserError {}
 pub struct User {
     socket: Socket,
     name: String,
-    idn: u64,
+    id: u64,
     idstr: String,
     bytes_read: usize,
     quota_bytes: usize,
     last_data_time: Instant,
     errs: Vec<SocketError>,
-    blocks: Vec<u64>,
+    blocked_users: Vec<u64>,
 }
 
 impl User {
-    pub fn new(new_socket: Socket, new_idn: u64) -> User {
-        let new_name = format!("user{}", &new_idn);
+    pub fn new(new_socket: Socket, new_id: u64) -> User {
+        let new_name = format!("user{}", &new_id);
         User {
             socket: new_socket,
-            idn: new_idn,
+            id: new_id,
             idstr: collapse(&new_name),
             name: new_name,
             bytes_read: 0,
             quota_bytes: 0,
             last_data_time: Instant::now(),
             errs: Vec::<SocketError>::new(),
-            blocks: Vec::<u64>::new(),
+            blocked_users: Vec::<u64>::new(),
         }
     }
 
@@ -75,7 +75,7 @@ impl User {
         &(self.name)
     }
     pub fn get_id(&self) -> u64 {
-        self.idn
+        self.id
     }
     pub fn get_idstr(&self) -> &str {
         &(self.idstr)
@@ -127,9 +127,9 @@ impl User {
     }
 
     pub fn block_id(&mut self, id: u64) -> bool {
-        match self.blocks.binary_search(&id) {
+        match self.blocked_users.binary_search(&id) {
             Err(n) => {
-                self.blocks.insert(n, id);
+                self.blocked_users.insert(n, id);
                 true
             }
             Ok(_) => false,
@@ -137,10 +137,10 @@ impl User {
     }
 
     pub fn unblock_id(&mut self, id: u64) -> bool {
-        match self.blocks.binary_search(&id) {
+        match self.blocked_users.binary_search(&id) {
             Err(_) => false,
             Ok(n) => {
-                self.blocks.remove(n);
+                self.blocked_users.remove(n);
                 true
             }
         }
@@ -148,7 +148,7 @@ impl User {
 
     pub fn deliver(&mut self, env: &Env) {
         match env.source {
-            End::User(id) => match &(self.blocks).binary_search(&id) {
+            End::User(id) => match &(self.blocked_users).binary_search(&id) {
                 Ok(_) => {} // do nothing
                 Err(_) => {
                     self.socket.enqueue(env.bytes());
@@ -207,21 +207,21 @@ impl User {
 
         self.bytes_read += n;
 
-        let n_buff = self.socket.recv_buff_size();
-        if n_buff > 0 {
+        let buffered_bytes = self.socket.recv_buff_size();
+        if buffered_bytes > 0 {
             match self.socket.try_get() {
                 Err(e) => {
                     self.errs.push(e);
                     None
                 }
-                Ok(msg_opt) => {
+                Ok(received_message_option) => {
                     self.last_data_time = Instant::now();
-                    if let Some(ref m) = msg_opt {
+                    if let Some(ref m) = received_message_option {
                         if m.counts() {
-                            self.quota_bytes += n_buff - self.socket.recv_buff_size();
+                            self.quota_bytes += buffered_bytes - self.socket.recv_buff_size();
                         }
                     }
-                    msg_opt
+                    received_message_option
                 }
             }
         } else {

@@ -1,5 +1,5 @@
 use crate::{
-    connection::Globals,
+    connection::ClientState,
     line::Line,
     message::respond_to_user_input,
     screen::Screen,
@@ -17,7 +17,7 @@ pub enum Mode {
     Delete,
 }
 
-fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) {
+fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut ClientState) {
     match global.mode {
         Mode::Command => match event.code {
             KeyCode::Char(' ') | KeyCode::Enter => global.mode = Mode::Insert,
@@ -89,7 +89,7 @@ fn command_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals
     }
 }
 
-fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) {
+fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut ClientState) {
     match event.code {
         KeyCode::Enter => respond_to_user_input(screen.pop_input(), screen, global),
         KeyCode::Backspace => {
@@ -111,7 +111,10 @@ fn input_key(event: event::KeyEvent, screen: &mut Screen, global: &mut Globals) 
     }
 }
 
-pub fn process_user_typing(screen: &mut Screen, global: &mut Globals) -> crossterm::Result<bool> {
+pub fn process_user_typing(
+    screen: &mut Screen,
+    global: &mut ClientState,
+) -> crossterm::Result<bool> {
     let mut should_refresh = false;
 
     while event::poll(Duration::default())? {
@@ -137,7 +140,7 @@ pub fn process_user_typing(screen: &mut Screen, global: &mut Globals) -> crosste
 }
 
 /// Write the mode line to the screen.
-pub fn write_mode_line(screen: &mut Screen, global: &Globals) {
+pub fn write_mode_line(screen: &mut Screen, global: &ClientState) {
     let mut mode_line = Line::default();
     let mch: &str = match global.mode {
         Mode::Insert => "Ins",
@@ -146,8 +149,8 @@ pub fn write_mode_line(screen: &mut Screen, global: &Globals) {
     };
     mode_line.pushf(mch, &HIGHLIGHT);
     mode_line.pushf(" │ ", &DIM);
-    mode_line.pushf(&(global.uname), &HIGHLIGHT);
+    mode_line.pushf(&(global.username), &HIGHLIGHT);
     mode_line.push(" @ ");
-    mode_line.pushf(&(global.local_addr), &HIGHLIGHT);
+    mode_line.pushf(&(global.local_address), &HIGHLIGHT);
     screen.set_stat_ll(mode_line);
 }

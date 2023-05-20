@@ -7,7 +7,7 @@ const CLIENT_NAME: &str = "fresh.toml";
 const SERVER_NAME: &str = "freshd.toml";
 
 //  Default values
-const ADDR: &str = "127.0.0.1:1234"; // server address
+const ADDRESS: &str = "127.0.0.1:1234"; // server address
 const SERVER_LOG: &str = "freshd.log"; // server log file
 const NAME: &str = "fresh user"; // client user name
 const LOBBY_NAME: &str = "Lobby"; // server landing room name
@@ -86,13 +86,13 @@ impl ServerConfig {
         let mut paths: Vec<PathBuf> = Vec::new();
         paths.push(PathBuf::from(SERVER_NAME));
         {
-            let mut p = default_config_dir();
-            p.push(SERVER_NAME);
-            paths.push(p);
+            let mut path = default_config_dir();
+            path.push(SERVER_NAME);
+            paths.push(path);
         }
 
         let cfg_file: ServerConfigFile = match read_first_to_string(&paths) {
-            Ok(s) => match toml::from_str(&s) {
+            Ok(content) => match toml::from_str(&content) {
                 Ok(x) => x,
                 Err(e) => {
                     println!("Error parsing config file: {}", &e);
@@ -116,7 +116,7 @@ impl ServerConfig {
             }
         };
 
-        let logl: LevelFilter = match cfg_file.log_level {
+        let log_level: LevelFilter = match cfg_file.log_level {
             None => LOG_LEVEL,
             Some(0) => LevelFilter::Off,
             Some(1) => LevelFilter::Error,
@@ -131,7 +131,7 @@ impl ServerConfig {
         };
 
         ServerConfig {
-            address: cfg_file.address.unwrap_or_else(|| ADDR.to_string()),
+            address: cfg_file.address.unwrap_or_else(|| ADDRESS.to_string()),
             min_tick: Duration::from_millis(cfg_file.tick_ms.unwrap_or(SERVER_TICK)),
             time_to_ping: Duration::from_millis(cfg_file.time_to_ping_ms.unwrap_or(TIME_TO_PING)),
             time_to_kick: Duration::from_millis(cfg_file.time_to_kick_ms.unwrap_or(TIME_TO_KICK)),
@@ -148,7 +148,7 @@ impl ServerConfig {
                 .welcome_message
                 .unwrap_or_else(|| WELCOME_MESSAGE.to_string()),
             log_file: cfg_file.log_file.unwrap_or_else(|| SERVER_LOG.to_string()),
-            log_level: logl,
+            log_level,
             byte_limit: cfg_file.byte_limit.unwrap_or(BYTE_LIMIT),
             byte_tick: cfg_file.bytes_per_tick.unwrap_or(BYTE_TICK),
         }
@@ -156,7 +156,7 @@ impl ServerConfig {
 
     fn generate() -> Result<String, String> {
         let cfg = ServerConfigFile {
-            address: Some(ADDR.to_string()),
+            address: Some(ADDRESS.to_string()),
             tick_ms: Some(SERVER_TICK),
             time_to_ping_ms: Some(TIME_TO_PING),
             time_to_kick_ms: Some(TIME_TO_KICK),
@@ -220,9 +220,9 @@ impl ClientConfig {
         }
         paths.push(PathBuf::from(CLIENT_NAME));
         {
-            let mut p = default_config_dir();
-            p.push(CLIENT_NAME);
-            paths.push(p);
+            let mut path = default_config_dir();
+            path.push(CLIENT_NAME);
+            paths.push(path);
         }
 
         let f: ClientConfigFile = match read_first_to_string(&paths) {
@@ -261,7 +261,7 @@ impl ClientConfig {
         };
 
         let cc = ClientConfig {
-            address: f.address.unwrap_or_else(|| String::from(ADDR)),
+            address: f.address.unwrap_or_else(|| String::from(ADDRESS)),
             name: f.name.unwrap_or_else(|| String::from(NAME)),
             tick: Duration::from_millis(f.timeout_ms.unwrap_or(CLIENT_TICK)),
             read_size: f.read_size.unwrap_or(READ_SIZE),
@@ -276,7 +276,7 @@ impl ClientConfig {
 
     fn generate() -> Result<String, String> {
         let cfg = ClientConfigFile {
-            address: Some(String::from(ADDR)),
+            address: Some(String::from(ADDRESS)),
             name: Some(String::from(NAME)),
             timeout_ms: Some(CLIENT_TICK),
             read_size: Some(READ_SIZE),

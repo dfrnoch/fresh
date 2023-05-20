@@ -41,23 +41,23 @@ impl std::fmt::Display for SocketError {
     }
 }
 
-fn get_offset(dat: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
-    let line = e.line() - 1;
-    let col = e.column() - 1;
-    let mut line_n: usize = 0;
+fn get_offset(data: &[u8], e: &serde_json::Error) -> Result<usize, &'static str> {
+    let line_number = e.line() - 1;
+    let column_number = e.column() - 1;
+    let mut parsed_line_count: usize = 0;
 
-    let offs = dat.iter().enumerate().find_map(|(n, b)| {
-        if line_n < line {
+    let character_offset = data.iter().enumerate().find_map(|(n, b)| {
+        if parsed_line_count < line_number {
             if *b == NEWLINE {
-                line_n += 1;
+                parsed_line_count += 1;
             }
             None
         } else {
-            Some(n + col)
+            Some(n + column_number)
         }
     });
 
-    offs.ok_or("Failed to find offset")
+    character_offset.ok_or("Failed to find offset")
 }
 
 pub struct Socket {
@@ -104,12 +104,12 @@ impl Socket {
     /// Attempts to read data from the underlying socket into the read buffer.
     pub fn read_data(&mut self) -> Result<usize, SocketError> {
         match self.stream.read(&mut self.read_buff) {
-            Ok(bytes_read) => {
-                if bytes_read > 0 {
+            Ok(read_bytes_count) => {
+                if read_bytes_count > 0 {
                     self.current
-                        .extend_from_slice(&self.read_buff[..bytes_read]);
+                        .extend_from_slice(&self.read_buff[..read_bytes_count]);
                 }
-                Ok(bytes_read)
+                Ok(read_bytes_count)
             }
             Err(e) => match e.kind() {
                 std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted => Ok(0),
@@ -152,15 +152,15 @@ impl Socket {
     /// A return value of `Ok(0)` means the send buffer is empty.
     pub fn send_data(&mut self) -> Result<usize, SocketError> {
         match self.stream.write(&self.send_buff) {
-            Ok(bytes_written) => {
-                if bytes_written == self.send_buff.len() {
+            Ok(written_bytes_count) => {
+                if written_bytes_count == self.send_buff.len() {
                     self.stream
                         .flush()
                         .map_err(|e| SocketError::from_err(SocketErrorKind::FlushFailed, &e))?;
                     self.send_buff.clear();
                     Ok(0)
                 } else {
-                    self.send_buff.drain(0..bytes_written);
+                    self.send_buff.drain(0..written_bytes_count);
                     Ok(self.send_buff.len())
                 }
             }

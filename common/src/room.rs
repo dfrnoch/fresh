@@ -43,16 +43,16 @@ impl Room {
         &(self.idstr)
     }
 
-    pub fn deliver(&self, env: &Env, uid_hash: &mut HashMap<u64, User>) {
+    pub fn deliver(&self, env: &Env, user_id_hash: &mut HashMap<u64, User>) {
         match env.dest {
-            End::User(uid) => {
-                if let Some(user) = uid_hash.get_mut(&uid) {
+            End::User(user_id) => {
+                if let Some(user) = user_id_hash.get_mut(&user_id) {
                     user.deliver(env);
                 }
             }
             _ => {
-                for uid in &self.users {
-                    if let Some(user) = uid_hash.get_mut(uid) {
+                for user_id in &self.users {
+                    if let Some(user) = user_id_hash.get_mut(user_id) {
                         user.deliver(env);
                     }
                 }
@@ -65,17 +65,17 @@ impl Room {
     }
 
     /// Deliver all the `Env`s in the queue.
-    pub fn deliver_inbox(&mut self, uid_hash: &mut HashMap<u64, User>) {
+    pub fn deliver_inbox(&mut self, user_id_hash: &mut HashMap<u64, User>) {
         while let Some(env) = self.inbox.pop() {
             match env.dest {
-                End::User(uid) => {
-                    if let Some(user) = uid_hash.get_mut(&uid) {
+                End::User(user_id) => {
+                    if let Some(user) = user_id_hash.get_mut(&user_id) {
                         user.deliver(&env);
                     }
                 }
                 _ => {
-                    for uid in &self.users {
-                        if let Some(user) = uid_hash.get_mut(uid) {
+                    for user_id in &self.users {
+                        if let Some(user) = user_id_hash.get_mut(user_id) {
                             user.deliver(&env);
                         }
                     }
@@ -84,26 +84,26 @@ impl Room {
         }
     }
 
-    pub fn join(&mut self, uid: u64) {
-        self.users.push(uid);
+    pub fn join(&mut self, user_id: u64) {
+        self.users.push(user_id);
     }
 
-    pub fn leave(&mut self, uid: u64) {
-        self.users.retain(|n| *n != uid);
+    pub fn leave(&mut self, user_id: u64) {
+        self.users.retain(|n| *n != user_id);
     }
 
-    pub fn ban(&mut self, uid: u64) {
-        self.invites.retain(|n| *n != uid);
-        self.bans.push(uid);
+    pub fn ban(&mut self, user_id: u64) {
+        self.invites.retain(|n| *n != user_id);
+        self.bans.push(user_id);
     }
 
-    pub fn invite(&mut self, uid: u64) {
-        self.bans.retain(|n| *n != uid);
-        self.invites.push(uid);
+    pub fn invite(&mut self, user_id: u64) {
+        self.bans.retain(|n| *n != user_id);
+        self.invites.push(user_id);
     }
 
-    pub fn set_op(&mut self, uid: u64) {
-        self.op = uid;
+    pub fn set_op(&mut self, user_id: u64) {
+        self.op = user_id;
     }
 
     pub fn get_op(&self) -> u64 {
@@ -114,11 +114,11 @@ impl Room {
         &(self.users)
     }
 
-    pub fn is_banned(&self, uid: &u64) -> bool {
-        self.bans.contains(uid)
+    pub fn is_banned(&self, user_id: &u64) -> bool {
+        self.bans.contains(user_id)
     }
 
-    pub fn is_invited(&self, uid: &u64) -> bool {
-        self.invites.contains(uid)
+    pub fn is_invited(&self, user_id: &u64) -> bool {
+        self.invites.contains(user_id)
     }
 }

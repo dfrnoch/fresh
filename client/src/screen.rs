@@ -13,11 +13,11 @@ const VBAR: char = '│';
 const HBAR: char = '—';
 
 struct Bits {
-    stat_begin: String,
-    stat_begin_chars: usize,
-    stat_end: String,
-    stat_end_chars: usize,
-    full_hline: String,
+    status_begin: String,
+    status_begin_length: usize,
+    status_end: String,
+    status_end_length: usize,
+    full_horizontal_line: String,
 }
 
 impl Bits {
@@ -29,37 +29,37 @@ impl Bits {
         end.push(" ");
         end.pushf(String::from(VBAR), &DIM);
 
-        let mut hline = Line::default();
+        let mut horizontal_line = Line::default();
         {
             let mut s = String::with_capacity(width as usize);
             for _ in 0..width {
                 s.push(HBAR);
             }
-            hline.pushf(&s, &DIM);
+            horizontal_line.pushf(&s, &DIM);
         }
 
         let start_len = start.len();
         let end_len = end.len();
 
         Bits {
-            stat_begin: start.first_n_chars(start_len).to_string(),
-            stat_end: end.first_n_chars(end_len).to_string(),
-            stat_begin_chars: start_len,
-            stat_end_chars: end_len,
-            full_hline: hline.first_n_chars((width + 1) as usize).to_string(),
+            status_begin: start.first_n_chars(start_len).to_string(),
+            status_end: end.first_n_chars(end_len).to_string(),
+            status_begin_length: start_len,
+            status_end_length: end_len,
+            full_horizontal_line: horizontal_line.first_n_chars((width + 1) as usize).to_string(),
         }
     }
 }
 
 pub struct Screen {
-    lines: Vec<Line>,
+    scrollback_lines: Vec<Line>,
     input: Vec<char>,
     input_ip: u16,
     roster: Vec<Line>,
     roster_width: u16,
-    stat_ul: Line,
-    stat_ur: Line,
-    stat_ll: Line,
+    status_upper_left: Line,
+    status_upper_right: Line,
+    status_lower_left: Line,
     lines_dirty: bool,
     input_dirty: bool,
     roster_dirty: bool,
@@ -81,14 +81,14 @@ impl Screen {
         term.flush()?;
 
         Ok(Screen {
-            lines: Vec::new(),
+            scrollback_lines: Vec::new(),
             input: Vec::new(),
             roster: Vec::new(),
             roster_width: roster_chars,
             input_ip: 0,
-            stat_ul: Line::default(),
-            stat_ur: Line::default(),
-            stat_ll: Line::default(),
+            status_upper_left: Line::default(),
+            status_upper_right: Line::default(),
+            status_lower_left: Line::default(),
             lines_dirty: true,
             input_dirty: true,
             roster_dirty: true,
@@ -108,23 +108,23 @@ impl Screen {
 
     /// Return the number of `Line`s in the scrollback buffer.
     pub fn get_scrollback_length(&self) -> usize {
-        self.lines.len()
+        self.scrollback_lines.len()
     }
 
     /// Trim the scrollback buffer to the latest `n` lines.
     pub fn prune_scrollback(&mut self, n: usize) {
-        if n >= self.lines.len() {
+        if n >= self.scrollback_lines.len() {
             return;
         }
-        let new_zero = self.lines.len() - n;
+        let new_zero = self.scrollback_lines.len() - n;
 
-        self.lines.drain(0..new_zero);
+        self.scrollback_lines.drain(0..new_zero);
         self.lines_dirty = true;
     }
 
     /// Push the supplied line onto the end of the scrollback buffer.
     pub fn push_line(&mut self, line: Line) {
-        self.lines.push(line);
+        self.scrollback_lines.push(line);
         self.lines_dirty = true;
     }
 
@@ -317,15 +317,15 @@ impl Screen {
     }
 
     pub fn set_stat_ll(&mut self, new_stat: Line) {
-        self.stat_ll = new_stat;
+        self.status_lower_left = new_stat;
         self.stat_dirty = true;
     }
     pub fn set_stat_ul(&mut self, new_stat: Line) {
-        self.stat_ul = new_stat;
+        self.status_upper_left = new_stat;
         self.stat_dirty = true;
     }
     pub fn set_stat_ur(&mut self, new_stat: Line) {
-        self.stat_ur = new_stat;
+        self.status_upper_right = new_stat;
         self.stat_dirty = true;
     }
 
@@ -336,7 +336,7 @@ impl Screen {
                     String::from_iter(std::iter::repeat(HBAR).take(cols as usize));
                 let mut line = Line::default();
                 line.pushf(&horizontal_line, &DIM);
-                self.bits.full_hline = line.first_n_chars(cols as usize).to_string();
+                self.bits.full_horizontal_line = line.first_n_chars(cols as usize).to_string();
             }
 
             self.lines_dirty = true;
@@ -365,7 +365,7 @@ impl Screen {
         let mut y = height - 1;
         let width = width as usize;
         let mut count_back: u16 = 0;
-        for aline in self.lines.iter_mut().rev() {
+        for aline in self.scrollback_lines.iter_mut().rev() {
             for row in aline.lines(width).iter().rev() {
                 if y == 0 {
                     break;
@@ -459,7 +459,7 @@ impl Screen {
 
         let third = self.last_x_size / 3;
         let maxpos = self.last_x_size - third;
-        let startpos = if self.input.len() < self.last_x_size as usize || self.input_ip < third {
+        let start_cursor_position = if self.input.len() < self.last_x_size as usize || self.input_ip < third {
             0
         } else if self.input_ip > maxpos {
             self.input_ip - maxpos
@@ -468,10 +468,10 @@ impl Screen {
         };
 
         let input_ip_us = self.input_ip as usize;
-        let endpos = ((startpos + self.last_x_size) as usize).min(self.input.len());
+        let end_cursor_position = ((start_cursor_position + self.last_x_size) as usize).min(self.input.len());
 
-        for (i, c) in self.input[startpos as usize..endpos].iter().enumerate() {
-            let i = i + startpos as usize;
+        for (i, c) in self.input[start_cursor_position as usize..end_cursor_position].iter().enumerate() {
+            let i = i + start_cursor_position as usize;
             let c = if i == input_ip_us {
                 style::style(*c).attribute(style::Attribute::Reverse)
             } else {
@@ -492,53 +492,53 @@ impl Screen {
     fn refresh_stat(&mut self, term: &mut Stdout) -> crossterm::Result<()> {
         trace!("Screen::refresh_stat(...) called");
 
-        let stat_padding = 2 + self.bits.stat_begin_chars + self.bits.stat_end_chars;
+        let stat_padding = 2 + self.bits.status_begin_length + self.bits.status_end_length;
         let stat_width = (self.last_x_size as usize) - stat_padding;
         let lower_line_y = self.last_y_size - 2;
 
         term.queue(cursor::MoveTo(0, lower_line_y))?
-            .queue(style::Print(&self.bits.full_hline))?
+            .queue(style::Print(&self.bits.full_horizontal_line))?
             .queue(cursor::MoveTo(1, lower_line_y))?
-            .queue(style::Print(&self.bits.stat_begin))?
-            .queue(style::Print(self.stat_ll.first_n_chars(stat_width)))?
-            .queue(style::Print(&self.bits.stat_end))?;
+            .queue(style::Print(&self.bits.status_begin))?
+            .queue(style::Print(self.status_lower_left.first_n_chars(stat_width)))?
+            .queue(style::Print(&self.bits.status_end))?;
 
         let total_space = self.last_x_size
-            - (3 + (self.bits.stat_begin_chars * 2) + (self.bits.stat_end_chars * 2)) as u16;
+            - (3 + (self.bits.status_begin_length * 2) + (self.bits.status_end_length * 2)) as u16;
         let space_per_section: usize = (total_space / 2) as usize;
         let abbreviation_space = space_per_section - 3;
 
         term.queue(cursor::MoveTo(0, 0))?
-            .queue(style::Print(&self.bits.full_hline))?
+            .queue(style::Print(&self.bits.full_horizontal_line))?
             .queue(cursor::MoveTo(1, 0))?
-            .queue(style::Print(&self.bits.stat_begin))?;
-        if self.stat_ul.len() > space_per_section {
-            term.queue(style::Print(self.stat_ul.first_n_chars(abbreviation_space)))?
+            .queue(style::Print(&self.bits.status_begin))?;
+        if self.status_upper_left.len() > space_per_section {
+            term.queue(style::Print(self.status_upper_left.first_n_chars(abbreviation_space)))?
                 .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.stat_ul.first_n_chars(space_per_section)))?;
+            term.queue(style::Print(self.status_upper_left.first_n_chars(space_per_section)))?;
         }
-        term.queue(style::Print(&self.bits.stat_end))?;
+        term.queue(style::Print(&self.bits.status_end))?;
 
-        let upper_right_offset: u16 = if self.stat_ur.len() > space_per_section {
+        let upper_right_offset: u16 = if self.status_upper_right.len() > space_per_section {
             self.last_x_size
-                - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + space_per_section)
+                - (2 + self.bits.status_begin_length + self.bits.status_end_length + space_per_section)
                     as u16
         } else {
             self.last_x_size
-                - (2 + self.bits.stat_begin_chars + self.bits.stat_end_chars + self.stat_ur.len())
+                - (2 + self.bits.status_begin_length + self.bits.status_end_length + self.status_upper_right.len())
                     as u16
         };
 
         term.queue(cursor::MoveTo(upper_right_offset, 0))?
-            .queue(style::Print(&self.bits.stat_begin))?;
-        if self.stat_ur.len() > space_per_section {
-            term.queue(style::Print(self.stat_ur.first_n_chars(abbreviation_space)))?
+            .queue(style::Print(&self.bits.status_begin))?;
+        if self.status_upper_right.len() > space_per_section {
+            term.queue(style::Print(self.status_upper_right.first_n_chars(abbreviation_space)))?
                 .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.stat_ur.first_n_chars(space_per_section)))?;
+            term.queue(style::Print(self.status_upper_right.first_n_chars(space_per_section)))?;
         }
-        term.queue(style::Print(&self.bits.stat_end))?;
+        term.queue(style::Print(&self.bits.status_end))?;
 
         self.stat_dirty = false;
         Ok(())

@@ -2,19 +2,19 @@ use crate::input::Mode;
 use common::{config::ClientConfig, proto::Sndr, socket::Socket};
 use std::net::TcpStream;
 
-pub struct Globals {
-    pub uname: String,
-    pub rname: String,
+pub struct ClientState {
+    pub username: String,
+    pub room_name: String,
     pub mode: Mode,
-    pub messages: Vec<String>,
-    pub local_addr: String,
-    pub server_addr: String,
+    pub buffered_messages: Vec<String>,
+    pub local_address: String,
+    pub server_address: String,
     pub socket: Socket,
     pub cmd: char,
-    pub run: bool,
+    pub running: bool,
 }
 
-impl Globals {
+impl ClientState {
     pub fn enqueue(&mut self, msg: &Sndr) {
         let bytes = msg.bytes();
         self.socket.enqueue(&bytes);

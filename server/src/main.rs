@@ -19,13 +19,13 @@ use std::time::Instant;
 
 /// Unique user name generator.
 fn gen_name(init_count: u64, map: &HashMap<String, u64>) -> String {
-    let mut n = init_count;
+    let mut new_id = init_count;
     loop {
-        let new_name = format!("user{}", n);
+        let new_name = format!("user{}", new_id);
         if map.get(&new_name).is_none() {
             return new_name;
         }
-        n += 1;
+        new_id += 1;
     }
 }
 fn main() {
@@ -47,15 +47,15 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     info!("Starting server on {}", listen_addr);
 
-    let mut user_map = HashMap::new();
-    let mut ustr_map = HashMap::new();
-    let mut room_map = HashMap::new();
-    let mut rstr_map = HashMap::new();
+    let mut users_by_id = HashMap::new();
+    let mut user_ids_by_str = HashMap::new();
+    let mut rooms_by_id = HashMap::new();
+    let mut room_ids_by_str = HashMap::new();
 
     let mut lobby: Room = Room::new(0, cfg.lobby_name.clone(), 0);
     lobby.leave(0);
-    room_map.insert(0, lobby);
-    rstr_map.insert(collapse(&cfg.lobby_name), 0);
+    rooms_by_id.insert(0, lobby);
+    room_ids_by_str.insert(collapse(&cfg.lobby_name), 0);
 
     let (usender, urecvr) = mpsc::channel::<User>();
 
@@ -69,42 +69,42 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     loop {
         now = Instant::now();
-        let mut rooms: Vec<u64> = room_map.keys().copied().collect();
-        for rid in rooms.drain(..) {
-            let rnum = room_map.len();
+        let mut rooms: Vec<u64> = rooms_by_id.keys().copied().collect();
+        for room_id in rooms.drain(..) {
+            let room_count = rooms_by_id.len();
             match process_room(
-                rid,
+                room_id,
                 now,
-                &mut user_map,
-                &mut ustr_map,
-                &mut room_map,
-                &mut rstr_map,
+                &mut users_by_id,
+                &mut user_ids_by_str,
+                &mut rooms_by_id,
+                &mut room_ids_by_str,
                 &cfg,
             ) {
                 Ok(()) => {}
                 Err(e) => {
-                    warn!("process_room({}, ...) returned error: {}", rid, &e);
+                    warn!("process_room({}, ...) returned error: {}", room_id, &e);
                 }
             }
-            if rnum != room_map.len() {
-                for (k, v) in rstr_map.iter() {
+            if room_count != rooms_by_id.len() {
+                for (k, v) in room_ids_by_str.iter() {
                     debug!("{} => {}", k, v);
                 }
-                for (k, v) in room_map.iter() {
+                for (k, v) in rooms_by_id.iter() {
                     debug!("{} => {}", k, v.get_idstr());
                 }
             }
 
-            if rid != 0 {
+            if room_id != 0 {
                 let mut remove: bool = false;
-                if let Some(r) = room_map.get(&rid) {
+                if let Some(r) = rooms_by_id.get(&room_id) {
                     if r.get_users().is_empty() {
                         remove = true;
-                        let _ = rstr_map.remove(r.get_idstr());
+                        let _ = room_ids_by_str.remove(r.get_idstr());
                     }
                 }
                 if remove {
-                    let _ = room_map.remove(&rid);
+                    let _ = rooms_by_id.remove(&room_id);
                 }
             }
         }
@@ -113,39 +113,39 @@ fn run() -> Result<(), Box<dyn Error>> {
             debug!("Accepting user {}: {}", user.get_id(), user.get_name());
             user.deliver_msg(&Sndr::Info(&cfg.welcome_message));
 
-            let mut rename: Option<String> = None;
+            let mut required_name_change: Option<String> = None;
             if user.get_idstr().is_empty() {
-                rename = Some(String::from(
+                required_name_change = Some(String::from(
                     "Your name does not have enough whitespace characters.",
                 ));
             } else if user.get_name().len() > cfg.max_user_name_length {
-                rename = Some(format!(
+                required_name_change = Some(format!(
                     "Your name cannot be longer than {} characters.",
                     cfg.max_user_name_length
                 ));
             } else {
-                let maybe_same_name = ustr_map.get(user.get_idstr());
-                if let Some(user_n) = maybe_same_name {
-                    rename = Some(format!(
+                let potential_name_conflict = user_ids_by_str.get(user.get_idstr());
+                if let Some(user_n) = potential_name_conflict {
+                    required_name_change = Some(format!(
                         "Name \"{}\" exists.",
-                        user_map.get(user_n).unwrap().get_name()
+                        users_by_id.get(user_n).unwrap().get_name()
                     ));
                 }
             }
 
-            if let Some(err_msg) = rename {
-                let new_name = gen_name(user.get_id(), &ustr_map);
+            if let Some(err_msg) = required_name_change {
+                let suggested_new_name = gen_name(user.get_id(), &user_ids_by_str);
                 let msg = Sndr::Err(&err_msg);
                 user.deliver_msg(&msg);
-                let old_name = user.get_name().to_string();
-                let data: [&str; 2] = [&old_name, &new_name];
-                let altstr = format!("You are now known as \"{}\".", &new_name);
+                let original_name = user.get_name().to_string();
+                let data: [&str; 2] = [&original_name, &suggested_new_name];
+                let user_notification = format!("You are now known as \"{}\".", &suggested_new_name);
                 let msg = Sndr::Misc {
                     what: "name",
                     data: &data,
-                    alt: &altstr,
+                    alt: &user_notification,
                 };
-                user.set_name(&new_name);
+                user.set_name(&suggested_new_name);
                 user.deliver_msg(&msg);
             }
 
@@ -159,11 +159,11 @@ fn run() -> Result<(), Box<dyn Error>> {
                     alt: &format!("{} joined {}.", user.get_name(), &cfg.lobby_name),
                 },
             );
-            let lobby = room_map.get_mut(&0).unwrap();
+            let lobby = rooms_by_id.get_mut(&0).unwrap();
             lobby.join(user.get_id());
             lobby.enqueue(env);
-            ustr_map.insert(user.get_idstr().to_string(), user.get_id());
-            user_map.insert(user.get_id(), user);
+            user_ids_by_str.insert(user.get_idstr().to_string(), user.get_id());
+            users_by_id.insert(user.get_id(), user);
         }
 
         let loop_time = Instant::now().duration_since(now);
