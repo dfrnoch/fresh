@@ -46,7 +46,9 @@ impl Bits {
             status_end: end.first_n_chars(end_len).to_string(),
             status_begin_length: start_len,
             status_end_length: end_len,
-            full_horizontal_line: horizontal_line.first_n_chars((width + 1) as usize).to_string(),
+            full_horizontal_line: horizontal_line
+                .first_n_chars((width + 1) as usize)
+                .to_string(),
         }
     }
 }
@@ -459,18 +461,23 @@ impl Screen {
 
         let third = self.last_x_size / 3;
         let maxpos = self.last_x_size - third;
-        let start_cursor_position = if self.input.len() < self.last_x_size as usize || self.input_ip < third {
-            0
-        } else if self.input_ip > maxpos {
-            self.input_ip - maxpos
-        } else {
-            self.input_ip - third
-        };
+        let start_cursor_position =
+            if self.input.len() < self.last_x_size as usize || self.input_ip < third {
+                0
+            } else if self.input_ip > maxpos {
+                self.input_ip - maxpos
+            } else {
+                self.input_ip - third
+            };
 
         let input_ip_us = self.input_ip as usize;
-        let end_cursor_position = ((start_cursor_position + self.last_x_size) as usize).min(self.input.len());
+        let end_cursor_position =
+            ((start_cursor_position + self.last_x_size) as usize).min(self.input.len());
 
-        for (i, c) in self.input[start_cursor_position as usize..end_cursor_position].iter().enumerate() {
+        for (i, c) in self.input[start_cursor_position as usize..end_cursor_position]
+            .iter()
+            .enumerate()
+        {
             let i = i + start_cursor_position as usize;
             let c = if i == input_ip_us {
                 style::style(*c).attribute(style::Attribute::Reverse)
@@ -500,7 +507,9 @@ impl Screen {
             .queue(style::Print(&self.bits.full_horizontal_line))?
             .queue(cursor::MoveTo(1, lower_line_y))?
             .queue(style::Print(&self.bits.status_begin))?
-            .queue(style::Print(self.status_lower_left.first_n_chars(stat_width)))?
+            .queue(style::Print(
+                self.status_lower_left.first_n_chars(stat_width),
+            ))?
             .queue(style::Print(&self.bits.status_end))?;
 
         let total_space = self.last_x_size
@@ -513,30 +522,40 @@ impl Screen {
             .queue(cursor::MoveTo(1, 0))?
             .queue(style::Print(&self.bits.status_begin))?;
         if self.status_upper_left.len() > space_per_section {
-            term.queue(style::Print(self.status_upper_left.first_n_chars(abbreviation_space)))?
-                .queue(style::Print("..."))?;
+            term.queue(style::Print(
+                self.status_upper_left.first_n_chars(abbreviation_space),
+            ))?
+            .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.status_upper_left.first_n_chars(space_per_section)))?;
+            term.queue(style::Print(
+                self.status_upper_left.first_n_chars(space_per_section),
+            ))?;
         }
         term.queue(style::Print(&self.bits.status_end))?;
 
         let upper_right_offset: u16 = if self.status_upper_right.len() > space_per_section {
             self.last_x_size
-                - (2 + self.bits.status_begin_length + self.bits.status_end_length + space_per_section)
-                    as u16
+                - (2 + self.bits.status_begin_length
+                    + self.bits.status_end_length
+                    + space_per_section) as u16
         } else {
             self.last_x_size
-                - (2 + self.bits.status_begin_length + self.bits.status_end_length + self.status_upper_right.len())
-                    as u16
+                - (2 + self.bits.status_begin_length
+                    + self.bits.status_end_length
+                    + self.status_upper_right.len()) as u16
         };
 
         term.queue(cursor::MoveTo(upper_right_offset, 0))?
             .queue(style::Print(&self.bits.status_begin))?;
         if self.status_upper_right.len() > space_per_section {
-            term.queue(style::Print(self.status_upper_right.first_n_chars(abbreviation_space)))?
-                .queue(style::Print("..."))?;
+            term.queue(style::Print(
+                self.status_upper_right.first_n_chars(abbreviation_space),
+            ))?
+            .queue(style::Print("..."))?;
         } else {
-            term.queue(style::Print(self.status_upper_right.first_n_chars(space_per_section)))?;
+            term.queue(style::Print(
+                self.status_upper_right.first_n_chars(space_per_section),
+            ))?;
         }
         term.queue(style::Print(&self.bits.status_end))?;
 
