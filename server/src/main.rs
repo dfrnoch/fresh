@@ -47,10 +47,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     info!("Starting server on {}", listen_addr);
 
-    let mut user_map: HashMap<u64, User> = HashMap::new();
-    let mut ustr_map: HashMap<String, u64> = HashMap::new();
-    let mut room_map: HashMap<u64, Room> = HashMap::new();
-    let mut rstr_map: HashMap<String, u64> = HashMap::new();
+    let mut user_map = HashMap::new();
+    let mut ustr_map = HashMap::new();
+    let mut room_map = HashMap::new();
+    let mut rstr_map = HashMap::new();
 
     let mut lobby: Room = Room::new(0, cfg.lobby_name.clone(), 0);
     lobby.leave(0);
