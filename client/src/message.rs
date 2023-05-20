@@ -13,7 +13,11 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientState) -> Result<(), String> {
+pub fn process_msg(
+    msg: Rcvr,
+    screen: &mut Screen,
+    client_state: &mut ClientState,
+) -> Result<(), String> {
     debug!("process_msg(...): rec'd: {:?}", &msg);
     match msg {
         Rcvr::Ping => {
@@ -251,7 +255,11 @@ pub fn process_msg(msg: Rcvr, screen: &mut Screen, client_state: &mut ClientStat
 
 /// In input mode, when the user hits return, this processes processes the
 /// content of the input line and decides what to do.
-pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, client_state: &mut ClientState) {
+pub fn respond_to_user_input(
+    input: Vec<char>,
+    screen: &mut Screen,
+    client_state: &mut ClientState,
+) {
     if let Some(char) = input.first() {
         if *char == client_state.cmd {
             if input.len() == 1 {
