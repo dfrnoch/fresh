@@ -67,9 +67,8 @@ fn configure() -> ClientConfig {
 
 fn main() {
     let cfg: ClientConfig = configure();
-    #[cfg(release)]
-    let the_log_level = simplelog::LevelFilter::None;
 
+    #[cfg(debug_assertions)]
     simplelog::WriteLogger::init(
         simplelog::LevelFilter::Trace,
         simplelog::Config::default(),
