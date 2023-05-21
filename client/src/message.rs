@@ -427,7 +427,7 @@ fn split_command_tokens<'a>(
 
     let (cmds, args) = tokenized_input.split_at(required_command_tokens);
     let cmds: Vec<&'a str> = cmds.to_vec();
-    let arg: String = args.to_vec().concat();
+    let arg: String = args.to_vec().join(" ");
 
     Ok((cmds, arg))
 }

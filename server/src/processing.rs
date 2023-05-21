@@ -35,9 +35,12 @@ impl<'a> Context<'a> {
     }
 
     fn get_room_by_id(&self, room_id: u64) -> Result<&Room, String> {
-        self.rooms_by_id
-            .get(&room_id)
-            .ok_or_else(|| format!("Context {:?}.get_room_by_id({}) returns None", &self, &room_id))
+        self.rooms_by_id.get(&room_id).ok_or_else(|| {
+            format!(
+                "Context {:?}.get_room_by_id({}) returns None",
+                &self, &room_id
+            )
+        })
     }
 
     fn get_user_by_id_mut(&mut self, user_id: u64) -> Result<&mut User, String> {
@@ -83,9 +86,6 @@ fn match_string<T>(s: &str, hash: &HashMap<String, T>) -> Vec<String> {
 
 fn append_comma_delimited_list<T: AsRef<str>>(base: &mut String, v: &[T]) {
     if !v.is_empty() {
-        if !base.is_empty() {
-            base.push_str(", ");
-        }
         base.push_str(&v.iter().map(AsRef::as_ref).collect::<Vec<_>>().join(", "));
     }
 }
