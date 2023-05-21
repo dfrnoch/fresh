@@ -7,8 +7,6 @@ pub struct State {
     pub room_name: String,
     pub mode: Mode,
     pub buffered_messages: Vec<String>,
-    #[cfg(target_os = "windows")]
-    pub last_key: Option<(std::time::Instant, crossterm::event::KeyCode)>,
     pub local_address: String,
     pub server_address: String,
     pub socket: Socket,

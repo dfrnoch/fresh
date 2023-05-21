@@ -104,7 +104,7 @@ impl ServerConfig {
                 match Self::generate() {
                     Ok(dir) => {
                         println!("\n\nDefault configuration file written to {}", &dir);
-                        println!("? >> You will probably want to edit this file to change your name and the server address.");
+                        println!("? >> You will probably want to edit this file to change the server address.");
                         println!("+ >> Press enter to continue.");
                         let _ = std::io::stdin().lines();
                     }

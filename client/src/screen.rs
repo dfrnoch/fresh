@@ -601,7 +601,7 @@ impl Screen {
     }
 
     pub fn refresh(&mut self, term: &mut Stdout) -> Result<(), String> {
-        trace!("Screen::refresh(...) called");
+        // trace!("Screen::refresh(...) called");
 
         if !(self.lines_dirty || self.input_dirty || self.roster_dirty || self.stat_dirty) {
             return Ok(());

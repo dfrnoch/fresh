@@ -105,8 +105,6 @@ fn main() {
         mode: Mode::Insert,
         local_address: String::default(),
         buffered_messages: Vec::new(),
-        #[cfg(target_os = "windows")]
-        last_key: None,
         server_address: socket.get_addr().unwrap(),
         socket,
         cmd: cfg.cmd_char,

@@ -24,6 +24,8 @@ pub fn listen(address: String, tx: mpsc::Sender<User>) -> Result<(), Box<dyn std
     let mut new_user_id: u64 = 100;
     let listener = TcpListener::bind(&address)?;
 
+    println!("Listening on {}", &address);
+
     for stream_result in listener.incoming() {
         let stream = match stream_result {
             Err(e) => {
