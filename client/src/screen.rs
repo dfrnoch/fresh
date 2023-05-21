@@ -150,28 +150,28 @@ impl Screen {
 
     /// Add a `char` to the input line.
     pub fn input_char(&mut self, ch: char) {
-        let input_ip = self.input_cursor as usize;
+        let input_cursor = self.input_cursor as usize;
 
-        if input_ip >= self.input.len() {
+        if input_cursor >= self.input.len() {
             self.input.push(ch);
         } else {
-            self.input.insert(input_ip, ch);
+            self.input.insert(input_cursor, ch);
         }
 
-        self.input_cursor = (input_ip + 1) as u16;
+        self.input_cursor = (input_cursor + 1) as u16;
         self.input_dirty = true;
     }
 
     pub fn input_backspace(&mut self) {
         let ilen = self.input.len();
-        let input_ip = self.input_cursor as usize;
+        let input_cursor = self.input_cursor as usize;
 
-        if ilen == 0 || input_ip == 0 {
+        if ilen == 0 || input_cursor == 0 {
             return;
         }
 
-        self.input_cursor = (input_ip - 1) as u16;
-        self.input.remove(input_ip - 1);
+        self.input_cursor = (input_cursor - 1) as u16;
+        self.input.remove(input_cursor - 1);
         self.input_dirty = true;
     }
 
@@ -179,7 +179,9 @@ impl Screen {
         let input_cursor = self.input_cursor as usize;
         let ilen = self.input.len();
 
-        if (input_cursor == ilen && words_to_delete > 0) || (input_cursor == 0 && words_to_delete < 0) {
+        if (input_cursor == ilen && words_to_delete > 0)
+            || (input_cursor == 0 && words_to_delete < 0)
+        {
             return;
         }
 
@@ -470,7 +472,7 @@ impl Screen {
                 self.input_cursor - third
             };
 
-        let input_ip_us = self.input_cursor as usize;
+        let input_cursor_us = self.input_cursor as usize;
         let end_cursor_position =
             ((start_cursor_position + self.terminal_width) as usize).min(self.input.len());
 
@@ -479,7 +481,7 @@ impl Screen {
             .enumerate()
         {
             let i = i + start_cursor_position as usize;
-            let c = if i == input_ip_us {
+            let c = if i == input_cursor_us {
                 style::style(*c).attribute(style::Attribute::Reverse)
             } else {
                 style::style(*c)
@@ -487,7 +489,7 @@ impl Screen {
             term.queue(style::PrintStyledContent(c))?;
         }
 
-        if input_ip_us == self.input.len() {
+        if input_cursor_us == self.input.len() {
             let cch = style::style(' ').attribute(style::Attribute::Reverse);
             term.queue(style::PrintStyledContent(cch))?;
         }
