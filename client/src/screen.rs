@@ -143,6 +143,7 @@ impl Screen {
 
         self.roster_dirty = true;
     }
+
     /// Get number of characters in the input line
     pub fn get_input_length(&self) -> usize {
         self.input.len()
@@ -310,6 +311,31 @@ impl Screen {
         let new = (cur + n_chars).max(0);
         self.lines_scroll = new as u16;
         self.lines_dirty = true;
+    }
+
+    pub fn scroll_roster(&mut self, n_chars: i16) {
+        let rost_vsize = self.terminal_height - 3;
+        if rost_vsize as usize >= self.roster.len() {
+            if self.roster_scroll != 0 {
+                self.roster_dirty = true;
+            }
+            self.roster_scroll = 0;
+            return;
+        }
+        let max = (self.roster.len() - (rost_vsize as usize)) as i16;
+        let new = self.roster_scroll as i16 + n_chars;
+        if new < 0 {
+            if self.roster_scroll != 0 {
+                self.roster_dirty = true;
+            }
+            self.roster_scroll = 0;
+        } else if new > max {
+            self.roster_scroll = max as u16;
+            self.roster_dirty = true;
+        } else {
+            self.roster_scroll = new as u16;
+            self.roster_dirty = true;
+        }
     }
 
     /// Return the contents of the input line as a String and clear the input line.

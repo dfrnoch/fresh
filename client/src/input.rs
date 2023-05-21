@@ -22,8 +22,20 @@ fn command_key(event: event::KeyEvent, screen: &mut Screen, state: &mut State) {
         Mode::Command => match event.code {
             KeyCode::Char(' ') | KeyCode::Enter => state.mode = Mode::Insert,
 
-            KeyCode::Up | KeyCode::Char('k') => screen.scroll_lines(1),
-            KeyCode::Down | KeyCode::Char('j') => screen.scroll_lines(-1),
+            KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('K') => {
+                if event.modifiers.contains(event::KeyModifiers::SHIFT) {
+                    screen.scroll_roster(-1);
+                } else {
+                    screen.scroll_lines(1);
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('J') => {
+                if event.modifiers.contains(event::KeyModifiers::SHIFT) {
+                    screen.scroll_roster(1);
+                } else {
+                    screen.scroll_lines(-1);
+                }
+            }
 
             KeyCode::Left | KeyCode::Char('h') => screen.input_skip_chars(-1),
             KeyCode::Right | KeyCode::Char('l') => screen.input_skip_chars(1),
@@ -59,16 +71,16 @@ fn command_key(event: event::KeyEvent, screen: &mut Screen, state: &mut State) {
             _ => {}
         },
         Mode::Delete => match event.code {
-            KeyCode::Char('h') => {
-                screen.input_skip_chars(-1);
-                // screen.delete_char();
-                state.mode = Mode::Command;
-            }
-            KeyCode::Char('l') => {
-                screen.input_skip_chars(1);
-                // scrn.delete_char();
-                state.mode = Mode::Command;
-            }
+            // KeyCode::Char('h') => {
+            //     screen.input_skip_chars(-1);
+            //     // screen.delete_char();
+            //     state.mode = Mode::Command;
+            // }
+            // KeyCode::Char('l') => {
+            //     screen.input_skip_chars(1);
+            //     // scrn.delete_char();
+            //     state.mode = Mode::Command;
+            // }
             KeyCode::Char('d') => {
                 screen.pop_input();
                 state.mode = Mode::Command;

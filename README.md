@@ -10,7 +10,7 @@ and the client uses the crossterm library for its UI.
 
 ### Installation
 
-Head over to the [releases](https://github.com/lnxcz/frsh/releases) page and
+Head over to the [releases](https://github.com/lnxcz/fresh/releases) page and
 download the latest release for your platform. Extract the archive and run the
 binary.
 
@@ -69,9 +69,9 @@ following keybindings are available:
 
 - `PgUp/PgDn` will scroll the chat text up/down one screen.
 
-- The up/down arrow keys (or K/J) will scroll the chat text up/down one line.
+- `Up/Dn/K/J` will scroll the chat text up/down one line.
 
-- `alt-Up/Dn/PgUp/PgDn` will scroll the roster window.
+- `SHIFT-Up/Dn/K/J` will scroll the roster window.
 
 - `h/l` will scroll the chat text left/right.
 
