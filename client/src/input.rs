@@ -127,6 +127,12 @@ pub fn process_user_typing(screen: &mut Screen, state: &mut State) -> crossterm:
     let mut should_refresh = false;
 
     while event::poll(Duration::default())? {
+        #[cfg(windows)]
+        {
+            use std::io::Write;
+            std::io::stdout().flush().unwrap();
+        }
+
         let prev_mode = state.mode;
 
         if let Ok(Event::Key(event)) = event::read() {
