@@ -11,6 +11,6 @@ repository = "https://github.com/lnxcz/fresh"
 lazy_static = "1.4.0"
 log = "0.4.17"
 simplelog = "0.12.1"
-crossterm = "0.26.1"
+crossterm = "0.25"
 clap = { version = "4.2.1", features = ["derive"] }
 common = { path = "../common" }
