@@ -3,6 +3,7 @@ name = "fresh-server"
 version = "1.0.0"
 authors = ["David Frnoch <frnoch@pm.me>"]
 edition = "2021"
+repository = "https://github.com/lnxcz/fresh"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
