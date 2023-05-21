@@ -1,6 +1,6 @@
 use crate::input::Mode;
 use common::{config::ClientConfig, proto::Sndr, socket::Socket};
-use std::{net::TcpStream};
+use std::net::TcpStream;
 
 pub struct State {
     pub username: String,
