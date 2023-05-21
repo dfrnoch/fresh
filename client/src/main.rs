@@ -113,8 +113,7 @@ fn main() {
 
     {
         let mut terminal_handle = stdout();
-        let mut terminal_screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width)
-        {
+        let mut screen: Screen = match Screen::new(&mut terminal_handle, cfg.roster_width) {
             Ok(x) => x,
             Err(e) => {
                 println!("Error setting up terminal: {}", e);
@@ -124,18 +123,18 @@ fn main() {
 
         let mut server_address_line = Line::default();
         server_address_line.pushf(&state.server_address, &HIGHLIGHT);
-        terminal_screen.set_stat_ul(server_address_line);
+        screen.set_stat_ul(server_address_line);
 
         let mut current_room_line = Line::default();
         current_room_line.pushf(&state.room_name, &HIGHLIGHT);
-        terminal_screen.set_stat_ur(current_room_line);
-        write_mode_line(&mut terminal_screen, &state);
+        screen.set_stat_ur(current_room_line);
+        write_mode_line(&mut screen, &state);
 
         'main_loop: loop {
             let loop_timer = Instant::now();
 
             'input_loop: loop {
-                match process_user_typing(&mut terminal_screen, &mut state) {
+                match process_user_typing(&mut screen, &mut state) {
                     Err(e) => {
                         state
                             .buffered_messages
@@ -143,7 +142,7 @@ fn main() {
                         break 'main_loop;
                     }
                     Ok(true) => {
-                        if let Err(e) = terminal_screen.refresh(&mut terminal_handle) {
+                        if let Err(e) = screen.refresh(&mut terminal_handle) {
                             state
                                 .buffered_messages
                                 .push(format!("Error refreshing screen: {}", e));
@@ -193,7 +192,7 @@ fn main() {
                                 break 'msg_loop;
                             }
                             Ok(Some(message)) => {
-                                match process_msg(message, &mut terminal_screen, &mut state) {
+                                match process_msg(message, &mut screen, &mut state) {
                                     Ok(()) => {
                                         if !state.running {
                                             break 'main_loop;
@@ -209,11 +208,11 @@ fn main() {
                 }
             }
 
-            if terminal_screen.get_scrollback_length() > cfg.max_scrollback {
-                terminal_screen.prune_scrollback(cfg.min_scrollback);
+            if screen.get_scrollback_length() > cfg.max_scrollback {
+                screen.prune_scrollback(cfg.min_scrollback);
             }
 
-            if let Err(e) = terminal_screen.refresh(&mut terminal_handle) {
+            if let Err(e) = screen.refresh(&mut terminal_handle) {
                 state
                     .buffered_messages
                     .push(format!("Error refreshing screen: {}", e));

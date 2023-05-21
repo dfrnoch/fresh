@@ -13,11 +13,7 @@ const OP_ERROR: &str = "# The recognized OP subcommands are OPEN, CLOSE, KICK, I
 const RETURN: char = '\n';
 const SPACE: char = ' ';
 
-pub fn process_msg(
-    msg: Rcvr,
-    terminal_screen: &mut Screen,
-    state: &mut State,
-) -> Result<(), String> {
+pub fn process_msg(msg: Rcvr, screen: &mut Screen, state: &mut State) -> Result<(), String> {
     debug!("process_msg(...): rec'd: {:?}", &msg);
     match msg {
         Rcvr::Ping => {
@@ -30,7 +26,7 @@ pub fn process_msg(
                 sl.pushf(&who, &HIGHLIGHT);
                 sl.push(": ");
                 sl.push(line);
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
             }
         }
 
@@ -40,7 +36,7 @@ pub fn process_msg(
             sl.pushf(&who, &DIM);
             sl.push(": ");
             sl.push(&text);
-            terminal_screen.push_line(sl);
+            screen.push_line(sl);
         }
 
         Rcvr::Logout(s) => {
@@ -52,14 +48,14 @@ pub fn process_msg(
             let mut sl = Line::default();
             sl.push("* ");
             sl.push(&s);
-            terminal_screen.push_line(sl);
+            screen.push_line(sl);
         }
 
         Rcvr::Err(s) => {
             let mut sl = Line::default();
             sl.pushf("# ", &DIM);
             sl.pushf(&s, &DIM);
-            terminal_screen.push_line(sl);
+            screen.push_line(sl);
         }
 
         Rcvr::Misc {
@@ -84,7 +80,7 @@ pub fn process_msg(
                     state.room_name = room.to_string();
                     let mut room_line = Line::default();
                     room_line.pushf(&state.room_name, &HIGHLIGHT);
-                    terminal_screen.set_stat_ur(room_line);
+                    screen.set_stat_ur(room_line);
                 } else {
                     sl.pushf(name, &HIGHLIGHT);
                     sl.push(" joined ");
@@ -92,7 +88,7 @@ pub fn process_msg(
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
                 state.enqueue_bytes(&ROSTER_REQUEST);
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
             }
 
             "leave" => {
@@ -108,7 +104,7 @@ pub fn process_msg(
                 sl.push(" left: ");
                 sl.push(message);
                 state.enqueue_bytes(&ROSTER_REQUEST);
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
             }
 
             "priv_echo" => {
@@ -125,7 +121,7 @@ pub fn process_msg(
                 sl.pushf(name, &HIGHLIGHT);
                 sl.push(": ");
                 sl.push(text);
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
             }
 
             "name" => {
@@ -142,14 +138,14 @@ pub fn process_msg(
                     sl.pushf("You", &BOLD);
                     sl.push(" are now known as ");
                     state.username.clone_from(new);
-                    write_mode_line(terminal_screen, state);
+                    write_mode_line(screen, state);
                 } else {
                     sl.pushf(old, &HIGHLIGHT);
                     sl.push(" is now known as ");
                 }
                 sl.pushf(new, &HIGHLIGHT);
                 sl.push(".");
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
                 state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
@@ -172,7 +168,7 @@ pub fn process_msg(
                 }
                 sl.pushf(room, &BOLD);
                 sl.push(".");
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
                 state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
@@ -181,7 +177,7 @@ pub fn process_msg(
                     return Err(format!("Incomplete data: {:?}", &msg));
                 }
 
-                terminal_screen.set_roster(data);
+                screen.set_roster(data);
             }
 
             "kick_other" => {
@@ -197,7 +193,7 @@ pub fn process_msg(
                 sl.push(" has been kicked from ");
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
                 state.enqueue_bytes(&ROSTER_REQUEST);
             }
 
@@ -214,7 +210,7 @@ pub fn process_msg(
                 sl.push(" have been kicked from ");
                 sl.pushf(room, &HIGHLIGHT);
                 sl.push(".");
-                terminal_screen.push_line(sl);
+                screen.push_line(sl);
             }
 
             "addr" => match data.get(0) {
@@ -223,7 +219,7 @@ pub fn process_msg(
                 }
                 Some(addr) => {
                     state.local_address.clone_from(addr);
-                    write_mode_line(terminal_screen, state);
+                    write_mode_line(screen, state);
                 }
             },
 
@@ -231,7 +227,7 @@ pub fn process_msg(
                 let mut sl = Line::default();
                 sl.push("* ");
                 sl.push(alt);
-                terminal_screen.push_line(sl)
+                screen.push_line(sl)
             }
         },
 
@@ -247,7 +243,7 @@ pub fn process_msg(
             let mut sl = Line::default();
             sl.push("# Unsupported Rcvr: ");
             sl.push(&s);
-            terminal_screen.push_line(sl);
+            screen.push_line(sl);
         }
     }
     Ok(())
@@ -255,7 +251,7 @@ pub fn process_msg(
 
 /// In input mode, when the user hits return, this processes processes the
 /// content of the input line and decides what to do.
-pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, state: &mut State) {
+pub fn respond_to_user_input(input: Vec<char>, screen: &mut Screen, state: &mut State) {
     if let Some(char) = input.first() {
         if *char == state.cmd {
             if input.len() == 1 {
@@ -277,27 +273,27 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
                     let mut sl = Line::default();
                     sl.pushf("# ", &DIM_BOLD);
                     sl.pushf("Commands:", &DIM);
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                     sl = Line::default();
                     sl.pushf("# ", &DIM_BOLD);
                     sl.pushf("  /quit", &DIM);
                     sl.push(" - quit the program");
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                     sl = Line::default();
                     sl.pushf("# ", &DIM_BOLD);
                     sl.pushf("  /name <name>", &DIM);
                     sl.push(" - change your name");
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                     sl = Line::default();
                     sl.pushf("# ", &DIM_BOLD);
                     sl.pushf("  /priv <name> <text>", &DIM);
                     sl.push(" - send a private message");
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                     sl = Line::default();
                     sl.pushf("# ", &DIM_BOLD);
                     sl.pushf("  /join <room>", &DIM);
                     sl.push(" - join a room");
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                 }
                 "quit" => match split_command_tokens(&cmd_toks, 1) {
                     Ok((_, arg)) => {
@@ -321,7 +317,7 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
                             "# You must specify a recipient for a private message.",
                             &DIM,
                         );
-                        terminal_screen.push_line(sl);
+                        screen.push_line(sl);
                     }
                 },
 
@@ -377,7 +373,7 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
                     Err(_) => {
                         let mut sl = Line::default();
                         sl.pushf(OP_ERROR, &DIM);
-                        terminal_screen.push_line(sl);
+                        screen.push_line(sl);
                     }
                     Ok((cmds, arg)) => {
                         let msg: Option<Sndr> = match cmds[1].to_lowercase().as_str() {
@@ -389,7 +385,7 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
                             _ => {
                                 let mut sl = Line::default();
                                 sl.pushf(OP_ERROR, &DIM);
-                                terminal_screen.push_line(sl);
+                                screen.push_line(sl);
                                 None
                             }
                         };
@@ -403,7 +399,7 @@ pub fn respond_to_user_input(input: Vec<char>, terminal_screen: &mut Screen, sta
                     let mut sl = Line::default();
                     sl.pushf("# Unknown command ", &DIM);
                     sl.pushf(x, &DIM_BOLD);
-                    terminal_screen.push_line(sl);
+                    screen.push_line(sl);
                 }
             }
             return;
