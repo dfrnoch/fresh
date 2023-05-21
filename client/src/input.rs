@@ -8,7 +8,7 @@ use crate::{
 use common::proto::Sndr;
 use crossterm::{event, event::Event, event::KeyCode};
 use log::trace;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -126,11 +126,26 @@ fn input_key(event: event::KeyEvent, screen: &mut Screen, state: &mut State) {
 pub fn process_user_typing(screen: &mut Screen, state: &mut State) -> crossterm::Result<bool> {
     let mut should_refresh = false;
 
-    while event::poll(Duration::from_millis(0))? {
+    while event::poll(Duration::default())? {
         let prev_mode = state.mode;
 
         if let Ok(Event::Key(event)) = event::read() {
             trace!("event: {:?}", event);
+
+            //FIXME: This is a hack to prevent the same key from being processed twice on windows
+            #[cfg(target_os = "windows")]
+            {
+                if let Some((last_time, last_key)) = state.last_key {
+                    if event.code == last_key && last_time.elapsed() < Duration::from_millis(100) {
+                        // Continue the loop without processing the event
+                        continue;
+                    }
+                }
+
+                // Update the last key pressed and its time
+                state.last_key = Some((Instant::now(), event.code));
+            }
+
             match state.mode {
                 Mode::Command | Mode::Delete => command_key(event, screen, state),
                 Mode::Insert => input_key(event, screen, state),
@@ -143,8 +158,6 @@ pub fn process_user_typing(screen: &mut Screen, state: &mut State) -> crossterm:
             write_mode_line(screen, state);
         }
         should_refresh = true;
-
-        break;
     }
 
     Ok(should_refresh)

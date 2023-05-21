@@ -1,14 +1,14 @@
 use crate::input::Mode;
 use common::{config::ClientConfig, proto::Sndr, socket::Socket};
-use crossterm::event::KeyCode;
-use std::{net::TcpStream, time::Instant};
+use std::{net::TcpStream};
 
 pub struct State {
     pub username: String,
     pub room_name: String,
     pub mode: Mode,
     pub buffered_messages: Vec<String>,
-    pub last_key: Option<(Instant, KeyCode)>,
+    #[cfg(target_os = "windows")]
+    pub last_key: Option<(std::time::Instant, crossterm::event::KeyCode)>,
     pub local_address: String,
     pub server_address: String,
     pub socket: Socket,
