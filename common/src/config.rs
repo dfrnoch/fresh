@@ -29,7 +29,7 @@ const MAX_SCROLLBACK: usize = 2000; // client will trim scrollback to MIN_SCROLL
 fn default_config_dir() -> PathBuf {
     match directories::BaseDirs::new() {
         None => PathBuf::default(),
-        Some(dir) => dir.config_dir().to_path_buf(),
+        Some(dir => dir.config_dir().to_path_buf(),
     }
 }
 

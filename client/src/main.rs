@@ -179,7 +179,7 @@ fn main() {
                 }
                 Ok(0) => {}
                 Ok(n) => {
-                    debug!("Socket::read_data() huffed {} bytes.", n);
+                    debug!("Socket::read_data() read {} bytes.", n);
                     'msg_loop: loop {
                         let message_result = state.socket.try_get();
                         match message_result {

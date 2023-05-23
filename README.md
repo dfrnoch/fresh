@@ -69,9 +69,9 @@ following keybindings are available:
 
 - `PgUp/PgDn` will scroll the chat text up/down one screen.
 
-- `Up/Dn/K/J` will scroll the chat text up/down one line.
+- `Up/Dn/k/j` will scroll the chat text up/down one line.
 
-- `SHIFT-Up/Dn/K/J` will scroll the roster window.
+- `SHIFT-Up/Dn/k/j` will scroll the roster window.
 
 - `h/l` will scroll the chat text left/right.
 
