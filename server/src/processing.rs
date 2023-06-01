@@ -457,10 +457,13 @@ fn do_unblock(context: &mut Context, username: String) -> Result<Envs, String> {
     let user = context.get_user_by_id_mut(context.current_user_id)?;
     let could_unblock: bool = user.unblock_id(other_user_id);
     if could_unblock {
-        user.deliver_msg(&Sndr::Info(&format!("You unblock {}.", &blocked_name)));
+        user.deliver_msg(&Sndr::Info(&format!(
+            "You are no longer blocking {}.",
+            &blocked_name
+        )));
     } else {
         user.deliver_msg(&Sndr::Err(&format!(
-            "You were not blocking {}.",
+            "You are not blocking {}.",
             &blocked_name
         )));
     }
